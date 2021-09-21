@@ -182,17 +182,17 @@ classdef n_link_arm_Env_no_animation < rl.env.MATLABEnvironment
 %         end
 %         
 %         % (optional) Visualization method
-        function plot(this)
-            this.Figure = figure('Color','w','Renderer','zbuffer');
-            ha = gca(this.Figure);
-            ha.XLimMode = 'manual';
-            ha.YLimMode = 'manual';
-            ha.XLim = [-5 5];
-            ha.YLim = [-5 5];
-
-            % Update the visualization
-            envUpdatedCallback(this)
-        end
+%         function plot(this)
+%             this.Figure = figure('Color','w','Renderer','zbuffer');
+%             ha = gca(this.Figure);
+%             ha.XLimMode = 'manual';
+%             ha.YLimMode = 'manual';
+%             ha.XLim = [-5 5];
+%             ha.YLim = [-5 5];
+% 
+%             % Update the visualization
+% %             envUpdatedCallback(this)
+%         end
         
         function [obs_arr, u_arr, t_arr] = get_arrays(this)
             obs_arr = this.states_arr;
@@ -202,50 +202,50 @@ classdef n_link_arm_Env_no_animation < rl.env.MATLABEnvironment
 
     end
     
-    methods (Access = protected)
-        % (optional) update visualization everytime the environment is updated 
-        % (notifyEnvUpdated is called)
-        
-        function envUpdatedCallback(this)
-            if ~isempty(this.Figure) && isvalid(this.Figure)
-            q = this.X(1:this.n,1);
-            L = ones(this.n,1);
-            p = this.ptch;
-            
-            if ~isempty(p)
-                for j=1:this.n
-                    set(p(j), 'Visible', 'off') 
-                end
-            end
-            for i = 1:this.n
-            
-
-                th = .06; % half-THickness of arm
-
-                avals = pi*[0:.05:1];
-                x(i,:) = [0 L(i) L(i)+th*cos(avals-pi/2) L(i) 0 th*cos(avals+pi/2)];
-                y(i,:) = [-th -th th*sin(avals-pi/2) th th th*sin(avals+pi/2)];
-                r(i,:) = (x(i,:).^2 + y(i,:).^2).^.5;
-                a(i,:) = atan2(y(i,:),x(i,:));
-                if i ==1
-                    xdraw(:,i) = r(i,:).*sin(a(i,:)+q(i));  % x pts to plot, for Link i
-                    ydraw(:,i) = r(i,:).*cos(a(i,:)+q(i));  % y pts to plot, for Link i
-                    xend(i) = L(i)*sin(q(i));  % "elbow" at end of Link i, x
-                    yend(i) = L(i)*cos(q(i));  % "elbow" at end of Link i, x
-                else
-                    xdraw(:,i) = xend(:,i-1) + r(i,:).*sin(a(i,:)+q(i));  % x pts to plot, for Link i
-                    ydraw(:,i) = yend(:,i-1) + r(i,:).*cos(a(i,:)+q(i));  % y pts to plot, for Link i
-                    xend(i) = xend(i-1) + L(i)*sin(q(i));  % "elbow" at end of Link i, x
-                    yend(i) = yend(i-1) + L(i)*cos(q(i));
-                end
-                
-            
-                this.Figure; 
-                p(i) = patch(xdraw(:,i),ydraw(:,i),'b','FaceAlpha',.3); hold on %pole i
-            end
-            this.ptch = p;
-            drawnow();
-            end
-        end
-    end
+%     methods (Access = protected)
+%         % (optional) update visualization everytime the environment is updated 
+%         % (notifyEnvUpdated is called)
+%         
+%         function envUpdatedCallback(this)
+%             if ~isempty(this.Figure) && isvalid(this.Figure)
+%             q = this.X(1:this.n,1);
+%             L = ones(this.n,1);
+%             p = this.ptch;
+%             
+%             if ~isempty(p)
+%                 for j=1:this.n
+%                     set(p(j), 'Visible', 'off') 
+%                 end
+%             end
+%             for i = 1:this.n
+%             
+% 
+%                 th = .06; % half-THickness of arm
+% 
+%                 avals = pi*[0:.05:1];
+%                 x(i,:) = [0 L(i) L(i)+th*cos(avals-pi/2) L(i) 0 th*cos(avals+pi/2)];
+%                 y(i,:) = [-th -th th*sin(avals-pi/2) th th th*sin(avals+pi/2)];
+%                 r(i,:) = (x(i,:).^2 + y(i,:).^2).^.5;
+%                 a(i,:) = atan2(y(i,:),x(i,:));
+%                 if i ==1
+%                     xdraw(:,i) = r(i,:).*sin(a(i,:)+q(i));  % x pts to plot, for Link i
+%                     ydraw(:,i) = r(i,:).*cos(a(i,:)+q(i));  % y pts to plot, for Link i
+%                     xend(i) = L(i)*sin(q(i));  % "elbow" at end of Link i, x
+%                     yend(i) = L(i)*cos(q(i));  % "elbow" at end of Link i, x
+%                 else
+%                     xdraw(:,i) = xend(:,i-1) + r(i,:).*sin(a(i,:)+q(i));  % x pts to plot, for Link i
+%                     ydraw(:,i) = yend(:,i-1) + r(i,:).*cos(a(i,:)+q(i));  % y pts to plot, for Link i
+%                     xend(i) = xend(i-1) + L(i)*sin(q(i));  % "elbow" at end of Link i, x
+%                     yend(i) = yend(i-1) + L(i)*cos(q(i));
+%                 end
+%                 
+%             
+%                 this.Figure; 
+%                 p(i) = patch(xdraw(:,i),ydraw(:,i),'b','FaceAlpha',.3); hold on %pole i
+%             end
+%             this.ptch = p;
+%             drawnow();
+%             end
+%         end
+%     end
 end
