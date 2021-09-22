@@ -1,7 +1,7 @@
 n = 2;
 [M,C,Tg,B] = manipEqns(n);
-[M_test,C_test,Tg_test] = sym2anonFnc(M,C,Tg);
-env = n_link_arm_Env_Fast(M_test,C_test,Tg_test,B);
+[M_eq,C_eq,Tg_eq] = sym2anonFnc(M,C,Tg);
+env = n_link_arm_Env(M_eq,C_eq,Tg_eq,B);
 
 nDelta = 36;
 nTop = 36;

@@ -92,6 +92,8 @@ function [M,C,Tg,B] = manipEqns(n)
         [cg,tg] = coeffs(eqn(j),g);
         Tg(j,1) = cg(1:end-1).*(tg(1:end-1)./g);
     end
+    
+    for i = 1:size(M)
     % M
     % C
     % Tg

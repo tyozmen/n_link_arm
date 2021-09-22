@@ -1,4 +1,4 @@
-classdef n_link_arm_Env_Fast < rl.env.MATLABEnvironment
+classdef n_link_arm_Env < rl.env.MATLABEnvironment
     %fast environment for the n-link arm. Uses anonymous functions for M,C,Tg instead of symbolics    
     
     %% Properties 
@@ -14,7 +14,7 @@ classdef n_link_arm_Env_Fast < rl.env.MATLABEnvironment
         dt = .01; 
 
         N = 1000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        lim = 100; % bound for torques
+        lim = 1000; % bound for torques
         ptch=[]
         init_qvals = [];
         Figure = [];
@@ -23,18 +23,23 @@ classdef n_link_arm_Env_Fast < rl.env.MATLABEnvironment
         % Initialize system state [x,dx,y,dy]'
         X = [];
         curStep = 0;
+        t = [];
+        states_arr = [];
+        actions_arr = [];
+        t_arr = [];
+        animate = false;
     end
     
     properties(Access = protected)
         % Initialize internal flag to indicate episode termination
-        IsDone = false        
+        IsDone = false;       
     end
 
     %% Necessary Methods
     methods              
         % Contructor method creates an instance of the environment
         % Change class name and constructor name accordingly
-        function this = n_link_arm_Env_Fast(M,C,Tg,B)
+        function this = n_link_arm_Env(M,C,Tg,B)
             n = length(B); %number of links
            
             % Initialize Observation settings
@@ -58,27 +63,11 @@ classdef n_link_arm_Env_Fast < rl.env.MATLABEnvironment
             this.Tg = Tg;
             this.B = B;
             
-            % Create a string of states to pass through maniplator Eqn
-            % matrices
-            q_vars = [];
-            dq_vars = [];
-            for i = 1:n
-                if i == n
-                    q_vars = [q_vars sprintf('this.X(%d)',i)];
-                    dq_vars = [dq_vars sprintf('this.X(%d)',i+n)];
-                else
-
-                    q_vars = [q_vars sprintf('this.X(%d),',i)];
-                    dq_vars = [dq_vars sprintf('this.X(%d),',i+n)];
-                end 
-            end
-            this.q_vrs = q_vars;
-            this.full_vrs = [q_vars ',' dq_vars];
-           
-           
-            
-            
-            
+            this.states_arr = [];
+            this.actions_arr = [];
+            this.t_arr = [];
+            this.t = 0;
+          
             % Initialize property values and pre-compute necessary values
             % this.ActionInfo.Elements = this.MaxForce*[-1 1];
 
@@ -91,14 +80,13 @@ classdef n_link_arm_Env_Fast < rl.env.MATLABEnvironment
             Action = max(-this.lim, Action);
             Action = min(this.lim, Action);
             
-            q = this.X(1:this.n,1);
-            dq = this.X(this.n+1:2*this.n,1);
             
-            % pass the string of variables(states) through the anonymous
-            % functions (Manip Eqn matrices)
-            eval(sprintf(['Tg_tmp = this.Tg(' this.q_vrs ');']));
-            eval(sprintf(['M_tmp = this.M(' this.q_vrs ');']));
-            eval(sprintf(['C_tmp = this.C(' this.full_vrs ');']));
+            q = this.X(1:this.n);
+            dq = this.X(this.n+1:end);
+            
+            Tg_tmp = this.Tg(q);
+            M_tmp = this.M(q);
+            C_tmp = this.C(this.X);
            
             d2q = double(-M_tmp\C_tmp*dq-M_tmp\Tg_tmp*this.g+M_tmp\this.B*Action);
             
@@ -108,10 +96,13 @@ classdef n_link_arm_Env_Fast < rl.env.MATLABEnvironment
             this.X(1:this.n,1) = q;
             this.X(this.n+1:2*this.n,1) = dq;
             Observation = this.X;
+            this.t = this.t + this.dt;
             
-            
+            this.states_arr = [this.states_arr Observation];
+            this.actions_arr = [this.actions_arr Action];
+            this.t_arr = [this.t_arr this.t];
             % 0 for now will be changed to reflect a desired position
-            Reward = 0;
+            Reward = -sum((0-this.X).^2);
 
 
 
@@ -121,18 +112,29 @@ classdef n_link_arm_Env_Fast < rl.env.MATLABEnvironment
             
             % (optional) use notifyEnvUpdated to signal that the 
             % environment has been updated (e.g. to update visualization)
-            notifyEnvUpdated(this);
+            
+            if this.animate
+                notifyEnvUpdated(this);
+            end
         end
         
         % Reset environment to initial state and output initial observation
         function InitialObservation = reset(this)
             this.X(1:this.n,1) = randsample(this.init_qvals,this.n);
             this.X(this.n+1:end,1) = 0;
+            this.states_arr = [];
+            this.actions_arr = [];
+            this.t_arr = [];
+            this.t = 0;
             
             InitialObservation = this.X;
+            this.states_arr = [this.states_arr InitialObservation];
+            
+            this.t_arr = [this.t_arr 0];
 %             this.ptch = [];
             this.curStep = 0; 
-            notifyEnvUpdated(this);
+            
+            % notifyEnvUpdated(this);
         end
     end
     %% Optional Methods (set methods' attributes accordingly)
@@ -162,66 +164,70 @@ classdef n_link_arm_Env_Fast < rl.env.MATLABEnvironment
 %         end
 %         
 %         % (optional) Visualization method
-        function plot(this)
-            this.Figure = figure('Color','w','Renderer','zbuffer');
-            ha = gca(this.Figure);
-            ha.XLimMode = 'manual';
-            ha.YLimMode = 'manual';
-            ha.XLim = [-5 5];
-            ha.YLim = [-5 5];
-
-            % Update the visualization
-            envUpdatedCallback(this)
+%         function plot(this)
+%             this.Figure = figure('Color','w','Renderer','zbuffer');
+%             ha = gca(this.Figure);
+%             ha.XLimMode = 'manual';
+%             ha.YLimMode = 'manual';
+%             ha.XLim = [-5 5];
+%             ha.YLim = [-5 5];
+% 
+%             % Update the visualization
+% %             envUpdatedCallback(this)
+%         end
+        
+        function [obs_arr, u_arr, t_arr] = get_arrays(this)
+            obs_arr = this.states_arr;
+            u_arr = this.actions_arr;
+            t_arr = this.t_arr;
         end
-        
-        
 
     end
     
-    methods (Access = protected)
-        % (optional) update visualization everytime the environment is updated 
-        % (notifyEnvUpdated is called)
-        
-        function envUpdatedCallback(this)
-            if ~isempty(this.Figure) && isvalid(this.Figure)
-            q = this.X(1:this.n,1);
-            L = ones(this.n,1);
-            p = this.ptch;
-            
-            if ~isempty(p)
-                for j=1:this.n
-                    set(p(j), 'Visible', 'off') 
-                end
-            end
-            for i = 1:this.n
-            
-
-                th = .06; % half-THickness of arm
-
-                avals = pi*[0:.05:1];
-                x(i,:) = [0 L(i) L(i)+th*cos(avals-pi/2) L(i) 0 th*cos(avals+pi/2)];
-                y(i,:) = [-th -th th*sin(avals-pi/2) th th th*sin(avals+pi/2)];
-                r(i,:) = (x(i,:).^2 + y(i,:).^2).^.5;
-                a(i,:) = atan2(y(i,:),x(i,:));
-                if i ==1
-                    xdraw(:,i) = r(i,:).*sin(a(i,:)+q(i));  % x pts to plot, for Link i
-                    ydraw(:,i) = r(i,:).*cos(a(i,:)+q(i));  % y pts to plot, for Link i
-                    xend(i) = L(i)*sin(q(i));  % "elbow" at end of Link i, x
-                    yend(i) = L(i)*cos(q(i));  % "elbow" at end of Link i, x
-                else
-                    xdraw(:,i) = xend(:,i-1) + r(i,:).*sin(a(i,:)+q(i));  % x pts to plot, for Link i
-                    ydraw(:,i) = yend(:,i-1) + r(i,:).*cos(a(i,:)+q(i));  % y pts to plot, for Link i
-                    xend(i) = xend(i-1) + L(i)*sin(q(i));  % "elbow" at end of Link i, x
-                    yend(i) = yend(i-1) + L(i)*cos(q(i));
-                end
-                
-            
-                this.Figure; 
-                p(i) = patch(xdraw(:,i),ydraw(:,i),'b','FaceAlpha',.3); hold on %pole i
-            end
-            this.ptch = p;
-            drawnow();
-            end
-        end
-    end
+%     methods (Access = protected)
+%         % (optional) update visualization everytime the environment is updated 
+%         % (notifyEnvUpdated is called)
+%         
+%         function envUpdatedCallback(this)
+%             if ~isempty(this.Figure) && isvalid(this.Figure)
+%             q = this.X(1:this.n,1);
+%             L = ones(this.n,1);
+%             p = this.ptch;
+%             
+%             if ~isempty(p)
+%                 for j=1:this.n
+%                     set(p(j), 'Visible', 'off') 
+%                 end
+%             end
+%             for i = 1:this.n
+%             
+% 
+%                 th = .06; % half-THickness of arm
+% 
+%                 avals = pi*[0:.05:1];
+%                 x(i,:) = [0 L(i) L(i)+th*cos(avals-pi/2) L(i) 0 th*cos(avals+pi/2)];
+%                 y(i,:) = [-th -th th*sin(avals-pi/2) th th th*sin(avals+pi/2)];
+%                 r(i,:) = (x(i,:).^2 + y(i,:).^2).^.5;
+%                 a(i,:) = atan2(y(i,:),x(i,:));
+%                 if i ==1
+%                     xdraw(:,i) = r(i,:).*sin(a(i,:)+q(i));  % x pts to plot, for Link i
+%                     ydraw(:,i) = r(i,:).*cos(a(i,:)+q(i));  % y pts to plot, for Link i
+%                     xend(i) = L(i)*sin(q(i));  % "elbow" at end of Link i, x
+%                     yend(i) = L(i)*cos(q(i));  % "elbow" at end of Link i, x
+%                 else
+%                     xdraw(:,i) = xend(:,i-1) + r(i,:).*sin(a(i,:)+q(i));  % x pts to plot, for Link i
+%                     ydraw(:,i) = yend(:,i-1) + r(i,:).*cos(a(i,:)+q(i));  % y pts to plot, for Link i
+%                     xend(i) = xend(i-1) + L(i)*sin(q(i));  % "elbow" at end of Link i, x
+%                     yend(i) = yend(i-1) + L(i)*cos(q(i));
+%                 end
+%                 
+%             
+%                 this.Figure; 
+%                 p(i) = patch(xdraw(:,i),ydraw(:,i),'b','FaceAlpha',.3); hold on %pole i
+%             end
+%             this.ptch = p;
+%             drawnow();
+%             end
+%         end
+%     end
 end
