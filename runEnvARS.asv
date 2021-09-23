@@ -3,15 +3,15 @@ n = 2;
 [M_eq,C_eq,Tg_eq] = sym2anonFnc(M,C,Tg);
 env = n_link_arm_Env(M_eq,C_eq,Tg_eq,B);
 
-nDelta = 36;
-nTop = 36;
+nDelta = 32;
+nTop = 32;
 alpha = .02;
 sigma = .05;
 N = 150;
 
 begin = tic;
 [W, policy] = EnvARSMu(env, alpha, sigma, nDelta, nTop, N);
-fprintf("EPS: %f \n",  N*nDelta/toc(begin));
+fprintf("EPS: %f \n",  N*2*nDelta/toc(begin));
 
 %%
 % yvals = [-2:.05:0.5];

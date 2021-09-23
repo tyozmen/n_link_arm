@@ -49,7 +49,7 @@ classdef n_link_arm_Env < rl.env.MATLABEnvironment
             
             % Initialize Action settings   
             lim = 100;
-            ActionInfo = rlNumericSpec([n 1], 'LowerLimit', -lim*ones(n,1), 'UpperLimit', lim*ones(n,1));
+            ActionInfo = rlNumericSpec([n 1], 'LowerLimit', -ones(n,1), 'UpperLimit', ones(n,1));
             ActionInfo.Name = 'n_link Action';
             
             % The following line implements built-in functions of RL env
@@ -77,8 +77,9 @@ classdef n_link_arm_Env < rl.env.MATLABEnvironment
         % given action for one step.
         function [Observation,Reward,IsDone,LoggedSignals] = step(this,Action)
             LoggedSignals = [];
-            Action = max(-this.lim, Action);
-            Action = min(this.lim, Action);
+            Action = max(-1, Action);
+            Action = min(1, Action);
+            Action = Action*this.lim;
             
             
             q = this.X(1:this.n);
@@ -101,11 +102,10 @@ classdef n_link_arm_Env < rl.env.MATLABEnvironment
             this.states_arr = [this.states_arr Observation];
             this.actions_arr = [this.actions_arr Action];
             this.t_arr = [this.t_arr this.t];
+            
+            
             % 0 for now will be changed to reflect a desired position
-            Reward = -sum((0-this.X).^2);
-
-
-
+            Reward = -1e-2.*sum((0-this.X).^2);
            
             IsDone = this.curStep >= this.N; %|| term;
             this.curStep = this.curStep + 1;
