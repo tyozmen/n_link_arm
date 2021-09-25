@@ -2,11 +2,11 @@ function [M,C,Tg,B] = manipEqns(n)
 % Gives out the symbolic representations for the maniplator Eqn matrices
 
 % Parameters can be manually set here
-    param.m = ones(n,1);
-    param.L = ones(n,1);
-    param.l = param.L/2;
-    param.J = ones(n,1);
-    param.c = ones(n,1);
+    param.m = ones(n,1);    % masses for each link
+    param.L = ones(n,1);    % lengths for each link
+    param.l = param.L/2;    % half length for each link
+    param.J = ones(n,1);    % moment of Inertia for each link
+    param.c = ones(n,1);    % viscous damping for each link
 
     m = param.m;
     L = param.L;
@@ -93,7 +93,7 @@ function [M,C,Tg,B] = manipEqns(n)
         Tg(j,1) = cg(1:end-1).*(tg(1:end-1)./g);
     end
     
-    for i = 1:size(M)
+%     for i = 1:size(M)
     % M
     % C
     % Tg
