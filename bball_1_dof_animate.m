@@ -1,14 +1,15 @@
-function bball_1_dof_animate(t_opt, X_opt,r)
+function bball_1_dof_animate(t_opt, X_opt,r,d)
 
 
 
 
 
 f = figure('Color','w','Renderer','zbuffer');
-axis([-(max(abs(X_opt(:,1)))+2) (max(abs(X_opt(:,1)))+2) -.5 (max(abs(X_opt(:,2)))+.4)]);
+% axis([-(max(abs(X_opt(:,1)))+2) (max(abs(X_opt(:,1)))+2) -.5 (max(abs(X_opt(:,2)))+.4)]);
+axis([-3 3 -.5 6]);
 y_s = X_opt(:,1);
 y_b = X_opt(:,2);
-w = X_opt(:,3);
+% w = X_opt(:,3);
 % % cart
 % x2 = [x-.3 x+.3 x+.3 x-.3];
 % y2 = [-.2 -.2 .2 .2 ];
@@ -21,7 +22,7 @@ w = X_opt(:,3);
 % p2 = patch(x2draw(1,:),y2draw(1,:),'r','FaceAlpha',.3); %hold on %pole 2
 % c1 = rectangle('Position',[x(1)-.25 -.15 .5 .3],'Curvature',0.2, 'FaceColor', [1, 0, 0, .3]); %cart
 b1 = rectangle('Position', [0-r y_b(1)-r 2*r 2*r],'Curvature',1, 'FaceColor', [0, 1, 1, .3]); % ball
-s1 = rectangle('Position',[0-1 y_s(1)-.15 2 .3],'Curvature',0.2, 'FaceColor', [1, 0, 0, .3]);
+s1 = rectangle('Position',[0-1 y_s(1)-d 2 2*d],'Curvature',0.2, 'FaceColor', [1, 0, 0, .3]);
 % m2 = rectangle('Position', [x1end(1)+L2*sin(q2(1))-.05 y1end(1)+L2*cos(q2(1))-.05 .1 .1],'Curvature',1, 'FaceColor', [0, 1, 1, .3]); %mass 2
 yline(0);
 % xline(0,'-.');
@@ -35,7 +36,7 @@ for i=5:length(X_opt)
 %         set(b1, 'Visible', 'off');
 
         set(b1, 'Position', [0-r y_b(i)-r 2*r 2*r])
-        set(s1, 'Position',[0-1 y_s(i)-.05 2 .1])
+        set(s1, 'Position',[0-1 y_s(i)-d 2 2*d])
 %         set(m2, 'Position', [x1end(i)+L2*sin(q2(i))-.05 y1end(i)+L2*cos(q2(i))-.05 .1 .1])
         str = sprintf('t = %.2f',t_opt(i));
         set(a1, 'String', str)  
