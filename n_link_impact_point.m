@@ -1,4 +1,6 @@
 function [x_imp,y_imp,l_imp,th] = n_link_impact_point(Q,L,r,d)
+% get the impact point at the moment of collision
+
 n = length(L);
 ee = n_link_fwdKin(Q(1:n),L);
 xb = Q(n+1);
