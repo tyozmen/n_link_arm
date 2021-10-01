@@ -8,7 +8,7 @@ g = 9.81;
 r = 0.1;    % radius of the ball
 d = 0.05;   % half thickness of the link
 e = .8;
-m_b = 0.5;
+m_b =2;
 %% Run ODE CAUTION!!!!!!!!! Change initial conditions for ODE if 'n' is changed 
 
 
@@ -72,7 +72,7 @@ for i = 1:10
   
     [t1,y1]= ode45(@(t1,Q)n_link_ball_dynamics_FL_PD(Q,M,C,Tg,B,g),[t(end) t(end)+4],q,opts);
     
-    if abs(y(end,n+2)) < .005
+    if abs(y(end,n+2)) < .005 % if you hit the ground break
         break
     end
     
