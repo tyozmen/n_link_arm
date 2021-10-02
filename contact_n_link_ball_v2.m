@@ -49,10 +49,20 @@ eqn = slope*xr + b + yshift - yr;
 % this if clause assigns a value to the val function depending on the
 % location of the closest point on the ball wrt the surface.
 % If val = 0 then the ball hits the surface
-
-if eqn > 0  % below
-    val(1,1) = xyr2xyeep + xyr2xynp - xynp2xyeep;
-else        % above
+if xeep > xnp && xr >= xnp && xr <= xeep
+    flag = 1;
+elseif xeep < xnp && xr <= xnp && xr >= xeep
+    flag = 1;
+else
+    flag = 0;
+end
+        
+    
+if eqn <= 0 && flag % below
+    val(1,1) = -(xyr2xyeep + xyr2xynp - xynp2xyeep);
+elseif eqn > 0 && flag       % above
+    val(1,1) = (xyr2xyeep + xyr2xynp - xynp2xyeep);
+else
     val(1,1) = -(xyr2xyeep + xyr2xynp - xynp2xyeep);
 end
 val(2,1) = yb;
