@@ -1,0 +1,3 @@
+[submodule "matlab_ars"]
+	path = matlab_ars
+	url = git@github.com:sgillen/matlab_ars.git

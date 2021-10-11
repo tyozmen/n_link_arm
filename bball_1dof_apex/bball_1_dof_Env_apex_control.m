@@ -12,7 +12,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         dt = .01; 
 
         N = 1000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        lim = 1000; % bound for torques
+        lim = 100; % bound for torques
         ptch=[]
         init_qvals = [];
         Figure = [];
@@ -27,11 +27,16 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         t_arr = [];
         animate = false;
         
+        
+        usePDControl = true; % wether to use the model based control or not
         % Variables needed for apex control
         t_ni = 0;       % time until next impact
         h_apx = 0;      % apex height;
         h_d_apx = 3;    % desired apex;
         y_imp = 2;      % pre-set impact height
+        
+        y_paddle_max = 2;
+        y_paddle_min = 0;
         
             % Where the link trajectory is defined as A*sin(2*pi*fr*t_sin)
         A = 0.35;       % amplitude of the sinusoidal for the link
@@ -55,8 +60,10 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
     methods              
         % Contructor method creates an instance of the environment
         % Change class name and constructor name accordingly
-        function this = bball_1_dof_Env_apex_control()
-            
+        function this = bball_1_dof_Env_apex_control(usePDControl)
+            arguments
+                usePDControl = true;
+            end
            
             % Initialize Observation settings
             ObservationInfo = rlNumericSpec([4 1]);
@@ -70,6 +77,8 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
             
             % The following line implements built-in functions of RL env
             this = this@rl.env.MATLABEnvironment(ObservationInfo,ActionInfo);
+            
+            this.usePDControl = usePDControl;
             this.lim = lim;
             this.init_qvals = [0:5*this.dt:pi];
             
@@ -93,12 +102,11 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
             Action = max(-1, Action);
             Action = min(1, Action);
             Action = Action*this.lim;
-            u = Action;            
             
             q = this.X;
             
-            % time track
-%             this.t = this.t + this.dt;
+            %  time track
+            %  this.t = this.t + this.dt;
             this.t_ai = this.t_ai + this.dt;
             
             if this.t_ai > this.t_idle && this.f_idle == 0 % then stepped too far
@@ -111,30 +119,38 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
                 this.dt = 0.01;
             end
             
-            % Feedback Lin. + PD control for now to test
-            kp = 65;
-            kd = 4.5;
-            this.y_des = this.y_imp - this.A*sin(2*pi*this.fr*this.t_sin);
-            if this.t_sin == 0
-                this.dy_des = 0;
+            if this.usePDControl
+                % Feedback Lin. + PD control for now to test
+                kp = 65;
+                kd = 4.5;
+                this.y_des = this.y_imp - this.A*sin(2*pi*this.fr*this.t_sin);
+                if this.t_sin == 0
+                    this.dy_des = 0;
+                else
+                    this.dy_des = -this.A*cos(2*pi*this.fr*this.t_sin);
+                end
+
+                u_fl = this.m_s*this.g;
+                u = u_fl + kp*(this.y_des-q(1))+kd*(this.dy_des - q(3)); % to compare with bball_1_dof_main
             else
-                this.dy_des = -this.A*cos(2*pi*this.fr*this.t_sin);
+                u = Action;
             end
             
-            u_fl = this.m_s*this.g;
-            u = u_fl + kp*(this.y_des-q(1))+kd*(this.dy_des - q(3)); % to compare with bball_1_dof_main
-            
             dq = [this.X(3); this.X(4); u/this.m_s-this.g; -this.g];
-            
             q = q + dq*this.dt;
+           
+            if q(1) >= this.y_paddle_max
+                q(1) = this.y_paddle_max;
+                q(3) = 0; dq(1) = 0;
+            elseif q(1) < this.y_paddle_min
+                q(1) = this.y_paddle_min;
+                q(3) = 0; dq(1) = 0;
+            end
             
             if (q(1)+this.d) > (q(2)-this.r) % then ball went through the link. now let's find where contact happens
                 dt_temp = ((this.X(2)-this.r) - (this.X(1)+this.d))/(this.X(3)-this.X(4)); % dt to reach contact point
                 
                 q = this.X + dq * dt_temp; % find the states right at the impact
-                
-                
-                
                 
                 % pre-impact velocities right when they touch
                 dy_si = q(3);  % pre-impact link velocity
@@ -168,34 +184,28 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
                 q(4) = dy_bf;
                 
                 
-                q(1) = min(q(1),this.y_imp);    % limit max height of the link to the impact point
-                this.X = q;
+               
                 this.t = this.t + dt_temp;
             else
-                q(1) = min(q(1),this.y_imp);    % limit max height of the link to the impact point
-                this.X = q;    
                 this.t = this.t + this.dt;
-%                 this.t_ai = this.t_ai + this.dt;
+                %  this.t_ai = this.t_ai + this.dt;
                 if this.t_ai >= this.t_idle
                     this.t_sin = this.t_sin+this.dt;
                 else
                     this.t_sin = 0;
                 end
             end
- 
             
-            
+
+            this.X = q;
             Observation = this.X;
             
             
             this.states_arr = [this.states_arr Observation];
             this.actions_arr = [this.actions_arr Action];
             this.t_arr = [this.t_arr this.t];
-            
-            
-            % 0 for now will be changed to reflect a desired position
-            Reward = 0; 
-            % Reward = -1e-2.*sum((0-this.X).^2);
+ 
+            Reward = -1e-2.*((this.h_d_apx + this.y_imp)-this.X(2)).^2;
            
             IsDone = this.curStep >= this.N; %|| term;
             this.curStep = this.curStep + 1;

@@ -13,7 +13,7 @@ classdef bball_1_dof_Env < rl.env.MATLABEnvironment
         
         dt = .01; 
 
-        N = 1000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        N = 2000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         lim = 1000; % bound for torques
         ptch=[]
         init_qvals = [];
@@ -81,9 +81,9 @@ classdef bball_1_dof_Env < rl.env.MATLABEnvironment
             q = this.X;
             
             % Feedback Lin. + PD control for now to test
-            kp = 65;
-            kd = 4.5;
-            u = this.m_s*this.g+kp*(2-q(1))+kd*(0 - q(3)); % to compare with bball_1_dof_main
+            %kp = 65;
+            %kd = 4.5;
+            %u = this.m_s*this.g+kp*(2-q(1))+kd*(0 - q(3)); % to compare with bball_1_dof_main
             
             dq = [this.X(3); this.X(4); u/this.m_s-this.g; -this.g];
             
@@ -122,9 +122,8 @@ classdef bball_1_dof_Env < rl.env.MATLABEnvironment
             this.t_arr = [this.t_arr this.t];
             
             
-            % 0 for now will be changed to reflect a desired position
-            Reward = 0; 
-            % Reward = -1e-2.*sum((0-this.X).^2);
+      
+            Reward = -0.01*(this.X(2) - 5)^2;
            
             IsDone = this.curStep >= this.N; %|| term;
             this.curStep = this.curStep + 1;

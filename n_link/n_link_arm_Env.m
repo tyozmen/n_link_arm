@@ -28,6 +28,7 @@ classdef n_link_arm_Env < rl.env.MATLABEnvironment
         actions_arr = [];
         t_arr = [];
         animate = false;
+        target_state;
     end
     
     properties(Access = protected)
@@ -67,6 +68,8 @@ classdef n_link_arm_Env < rl.env.MATLABEnvironment
             this.actions_arr = [];
             this.t_arr = [];
             this.t = 0;
+            
+            this.target_state = [rand(n,1)*2*pi; zeros(n,1)];
           
             % Initialize property values and pre-compute necessary values
             % this.ActionInfo.Elements = this.MaxForce*[-1 1];
@@ -104,8 +107,10 @@ classdef n_link_arm_Env < rl.env.MATLABEnvironment
             this.t_arr = [this.t_arr this.t];
             
             
-            % 0 for now will be changed to reflect a desired position
-            Reward = -1e-2.*sum((0-this.X).^2);
+            Xmod = this.X;
+            Xmod(1:this.n) = mod(Xmod(1:this.n), 2*pi);
+
+            Reward = -1e-2.*sum((this.target_state-Xmod).^2);
            
             IsDone = this.curStep >= this.N; %|| term;
             this.curStep = this.curStep + 1;
