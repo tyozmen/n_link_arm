@@ -33,9 +33,9 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         t_ni = 0;       % time until next impact
         h_apx = 0;      % apex height;
         h_d_apx = 3;    % desired apex;
-        y_imp = 2;      % pre-set impact height
+        y_imp = 2-.05;      % pre-set impact height
         
-        y_paddle_max = 2;
+        y_paddle_max = 2 +.2;
         y_paddle_min = 0;
         
             % Where the link trajectory is defined as A*sin(2*pi*fr*t_sin)
@@ -45,7 +45,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         
         t_m = [];       % time required to move the link before the ball hits
         t_ai = 0;       % time after impact
-        t_idle = 100;   % how long the arm should wait idle before getting ready to hit the ball
+        t_idle = 100;   % how long the arm should wait idle before getting ready to hit the ball initially
         f_idle = 0;     % flag for idle state
         y_des = 2;      % desired y position for the link
         dy_des = 0;     % desired y velocity for the link
@@ -121,13 +121,13 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
             
             if this.usePDControl
                 % Feedback Lin. + PD control for now to test
-                kp = 65;
-                kd = 4.5;
+                kp = 55;
+                kd = 125.5;
                 this.y_des = this.y_imp - this.A*sin(2*pi*this.fr*this.t_sin);
                 if this.t_sin == 0
                     this.dy_des = 0;
                 else
-                    this.dy_des = -this.A*cos(2*pi*this.fr*this.t_sin);
+                    this.dy_des = -this.A*cos(2*pi*this.fr*this.t_sin)*2*pi*this.fr;
                 end
 
                 u_fl = this.m_s*this.g;
@@ -158,8 +158,11 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
                 
                 
                 % post-impact velocities
-                dy_bf = -this.e*(dy_bi-dy_si)+dy_si; 
-                dy_sf = (1+this.e)*this.m_b*(dy_bi-dy_si)/this.m_s + dy_si;
+
+                Coeffs = [this.m_b this.m_s; 1 -1];
+                dy_f = Coeffs\[this.m_b*dy_bi+this.m_s*dy_si; (dy_si-dy_bi)*this.e];
+                dy_bf = dy_f(1);
+                dy_sf = dy_f(2);
                 
                 dy_bi_nxt = -dy_bf; % post impact ball vel now is the next pre-impact ball vel
                 
@@ -167,8 +170,9 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
                 this.h_apx = (dy_bf^2)/(2*this.g);
                 
                 dybf_d = sqrt(this.h_d_apx*2*this.g); % desired ball vel after impact
-                dysi_d = (dybf_d + this.e*dy_bi_nxt)/(1+this.e); %desired surface velocity
-                
+
+                dys_d = [1 -1; 1 this.e]\[this.m_b*(dy_bi_nxt-dybf_d)/this.m_s; dybf_d+this.e*dy_bi_nxt];
+                dysi_d = dys_d(2);
                 % the surface velocity at the point of impact is set to be
                 % A*2*pi*f.
                 this.fr = dysi_d/(this.A*2*pi); %required frequency of sinusoidal to hit the ball with the right velocity
@@ -189,7 +193,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
             else
                 this.t = this.t + this.dt;
                 %  this.t_ai = this.t_ai + this.dt;
-                if this.t_ai >= this.t_idle
+                if this.t_ai > this.t_idle
                     this.t_sin = this.t_sin+this.dt;
                 else
                     this.t_sin = 0;
@@ -213,16 +217,16 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
             % (optional) use notifyEnvUpdated to signal that the 
             % environment has been updated (e.g. to update visualization)
             
-            if this.animate
-                notifyEnvUpdated(this);
-            end
+%             if this.animate
+%                 notifyEnvUpdated(this);
+%             end
         end
         
         % Reset environment to initial state and output initial observation
         function InitialObservation = reset(this)
 %             this.X(1:this.n,1) = randsample(this.init_qvals,this.n);
 %             this.X(this.n+1:end,1) = 0;
-            this.X = [2; 7; 0; 0]; % to compare with bball_1_dof_main
+            this.X = [2-this.d; 7; 0; 0]; % to compare with bball_1_dof_main
             this.states_arr = [];
             this.actions_arr = [];
             this.t_arr = [];
