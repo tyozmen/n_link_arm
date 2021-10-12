@@ -18,9 +18,9 @@ for i=1:n_episodes
     h_apx = [h_apx env.h_apx];
     h_d_apx = [h_d_apx env.h_d_apx+offset];
     R = R + r;
-    if i> 450
-        env.h_d_apx =  5;
-    end
+%     if i> 450
+%         env.h_d_apx =  5;
+%     end
 %     if mod(i,5) == 0
 %     end
 end
