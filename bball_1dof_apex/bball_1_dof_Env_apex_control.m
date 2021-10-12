@@ -150,10 +150,16 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
             if (q(1)+this.d) > (q(2)-this.r) % then ball went through the link. now let's find where contact happens
                 dt_temp = ((this.X(2)-this.r) - (this.X(1)+this.d))/(this.X(3)-this.X(4)); % dt to reach contact point
                 
-                this.t_sin = this.t_sin-this.dt+dt_temp;
+                if this.usePDControl
+                    this.t_sin = this.t_sin-this.dt+dt_temp;
+                    this.y_des = this.y_imp - this.A*sin(2*pi*this.fr*this.t_sin);
+                    this.dy_des = -this.A*cos(2*pi*this.fr*this.t_sin)*2*pi*this.fr;
+                    u_fl = this.m_s*this.g;
+                    u = u_fl + kp*(this.y_des-q(1))+kd*(this.dy_des - q(3));
+                else 
+                    u = Action;
+                end
                 
-                this.y_des = this.y_imp - this.A*sin(2*pi*this.fr*this.t_sin);
-                this.dy_des = -this.A*cos(2*pi*this.fr*this.t_sin)*2*pi*this.fr;
                 dq = [this.X(3); this.X(4); u/this.m_s-this.g; -this.g];
                 
                 
