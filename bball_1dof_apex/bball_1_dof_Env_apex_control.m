@@ -167,7 +167,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
                 dy_bi_nxt = -dy_bf; % post impact ball vel now is the next pre-impact ball vel
                 
                 this.t_ni = 2*dy_bf/this.g; 
-                this.h_apx = (dy_bf^2)/(2*this.g);
+                this.h_apx = q(2)+(dy_bf^2)/(2*this.g);
                 
                 dybf_d = sqrt(this.h_d_apx*2*this.g); % desired ball vel after impact
 
