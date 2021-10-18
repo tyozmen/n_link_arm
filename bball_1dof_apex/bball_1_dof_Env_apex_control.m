@@ -12,7 +12,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         dt = .01; 
 
         N = 1000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        lim = 100; % bound for torques
+        lim = 890; % max force. This is about 200lb-force which can be achieved by a $130 linear actuator
         ptch=[]
         init_qvals = [];
         Figure = [];
@@ -132,6 +132,10 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
 
                 u_fl = this.m_s*this.g;
                 u = u_fl + kp*(this.y_des-q(1))+kd*(this.dy_des - q(3)); % to compare with bball_1_dof_main
+                %force limits
+                u = max(-this.lim, u);
+                u = min(this.lim, u);
+                Action = u;
             else
                 u = Action;
             end
@@ -139,13 +143,13 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
             dq = [this.X(3); this.X(4); u/this.m_s-this.g; -this.g];
             q = q + dq*this.dt;
            
-            if q(1) >= this.y_paddle_max
-                q(1) = this.y_paddle_max;
-                q(3) = 0; dq(1) = 0;
-            elseif q(1) < this.y_paddle_min
-                q(1) = this.y_paddle_min;
-                q(3) = 0; dq(1) = 0;
-            end
+%             if q(1) >= this.y_paddle_max
+%                 q(1) = this.y_paddle_max;
+%                 q(3) = 0; dq(1) = 0;
+%             elseif q(1) < this.y_paddle_min
+%                 q(1) = this.y_paddle_min;
+%                 q(3) = 0; dq(1) = 0;
+%             end
             
             if (q(1)+this.d) > (q(2)-this.r) % then ball went through the link. now let's find where contact happens
                 dt_temp = ((this.X(2)-this.r) - (this.X(1)+this.d))/(this.X(3)-this.X(4)); % dt to reach contact point
@@ -156,6 +160,10 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
                     this.dy_des = -this.A*cos(2*pi*this.fr*this.t_sin)*2*pi*this.fr;
                     u_fl = this.m_s*this.g;
                     u = u_fl + kp*(this.y_des-q(1))+kd*(this.dy_des - q(3));
+                    %force limits
+                    u = max(-this.lim, u);
+                    u = min(this.lim, u);
+                    Action = u;
                 else 
                     u = Action;
                 end

@@ -41,5 +41,7 @@ figure();
 plot(t,states(2,:));
 title('ball height over time')
 xlabel('t (s)'); ylabel('y (m)');
+figure()
+plot(t,[0 actions]);
 
 % bball_1_dof_animate(t,states',env.r,env.d) % uncomment to animate
