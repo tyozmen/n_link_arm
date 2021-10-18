@@ -71,7 +71,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
             ObservationInfo.Description = sprintf('y_s, y_b, dy_s, dy_b');
             
             % Initialize Action settings   
-            lim = 100;
+            lim = 890;
             ActionInfo = rlNumericSpec([1 1], 'LowerLimit', -ones(1,1), 'UpperLimit', ones(1,1));
             ActionInfo.Name = 'link Action';
             
