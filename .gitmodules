@@ -1,3 +1,6 @@
 [submodule "matlab_ars"]
 	path = matlab_ars
 	url = git@github.com:sgillen/matlab_ars.git
+[submodule "matlab_gym_bridge"]
+	path = matlab_gym_bridge
+	url = git@github.com:sgillen/matlab_gym_bridge.git
