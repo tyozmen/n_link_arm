@@ -1,10 +1,10 @@
 %clear all
-n = 4;
-L = 0.5*ones(n,1);
+n = 3;
+L = 1*ones(n,1);
 [M,C,Tg,B] = manipEqns(n);
 [M_eq,C_eq,Tg_eq] = sym2anonFnc(M,C,Tg);
 
-env = n_link_arm_Env(M_eq,C_eq,Tg_eq,B);
+env = n_link_ball_Env(M_eq,C_eq,Tg_eq,B,L,true);
 %plot(env);
 
 reset(env);
