@@ -6,9 +6,10 @@ function bball_1_dof_animate(t_opt, X_opt,r,d)
 
 f = figure('Color','w','Renderer','zbuffer');
 % axis([-(max(abs(X_opt(:,1)))+2) (max(abs(X_opt(:,1)))+2) -.5 (max(abs(X_opt(:,2)))+.4)]);
-axis([-3 3 -.5 6]);
+
 y_s = X_opt(:,1);
 y_b = X_opt(:,2);
+axis([-3 3 -.5 max(y_b)+.2]);
 % w = X_opt(:,3);
 % % cart
 % x2 = [x-.3 x+.3 x+.3 x-.3];
@@ -43,9 +44,9 @@ for i=5:length(X_opt)
         figure(f)
         hold on
 %         plot(x(1:i),y(1:i))
-        axis([-3 3 -.5 6]);
+        axis([-3 3 -.5 max(y_b)+.2]);
         drawnow                                	
-        pause(0.005)
+        pause(0.02)
     end
 end
 end
