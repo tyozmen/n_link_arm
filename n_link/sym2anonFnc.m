@@ -61,6 +61,10 @@ for i = 1:n
     C_str =  strrep(C_str,old_dq_str, new_dq_str);
 end
 
+sprintf(['Tg_eq = @(q) ' Tg_str ';'])
+sprintf(['M_eq =  @(q) ' M_str  ';'])
+sprintf(['C_eq =  @(q) ' C_str  ';'])
+
 eval(sprintf(['Tg_eq = @(q) ' Tg_str ';']));
 eval(sprintf(['M_eq =  @(q) ' M_str  ';']));
 eval(sprintf(['C_eq =  @(q) ' C_str  ';']));
