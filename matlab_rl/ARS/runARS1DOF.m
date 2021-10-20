@@ -1,10 +1,10 @@
 env = bball_1_dof_Env_apex_control(false);
 
 nDelta = 32;
-nTop = 4;
+nTop = 1;
 stepSize = .2;
 deltaStd = .1;
-nEpochs = 1000;
+nEpochs = 200;
 
 begin = tic;
 agent = ARSAgent(env, stepSize, deltaStd, nDelta, nTop, useBias=false, maxStepsPerEpisode=1000);

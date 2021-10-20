@@ -36,7 +36,9 @@ def run_ppo(seed):
                 learning_rate=2.5e-4,
                 clip_range=0.2
                 )
+    print("learning")
     model.learn(2e6)
+    print("learned")
     model.save(f"./sb3_data/{env_script}/{algo}/{seed}/model.pkl")
     env.save(f"./sb3_data/{env_script}/{algo}/{seed}/vecnormalize.pkl")
 

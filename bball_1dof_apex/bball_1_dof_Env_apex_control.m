@@ -143,13 +143,13 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
             dq = [this.X(3); this.X(4); u/this.m_s-this.g; -this.g];
             q = q + dq*this.dt;
            
-%             if q(1) >= this.y_paddle_max
-%                 q(1) = this.y_paddle_max;
-%                 q(3) = 0; dq(1) = 0;
-%             elseif q(1) < this.y_paddle_min
-%                 q(1) = this.y_paddle_min;
-%                 q(3) = 0; dq(1) = 0;
-%             end
+            if q(1) >= this.y_paddle_max
+                q(1) = this.y_paddle_max;
+                q(3) = 0; dq(1) = 0;
+            elseif q(1) < this.y_paddle_min
+                q(1) = this.y_paddle_min;
+                q(3) = 0; dq(1) = 0;
+            end
             
             if (q(1)+this.d) > (q(2)-this.r) % then ball went through the link. now let's find where contact happens
                 dt_temp = ((this.X(2)-this.r) - (this.X(1)+this.d))/(this.X(3)-this.X(4)); % dt to reach contact point
@@ -172,6 +172,15 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
                 
                 
                 q = this.X + dq * dt_temp; % find the states right at the impact
+
+                if q(1) >= this.y_paddle_max
+                    q(1) = this.y_paddle_max;
+                    q(3) = 0; dq(1) = 0;
+                elseif q(1) < this.y_paddle_min
+                    q(1) = this.y_paddle_min;
+                    q(3) = 0; dq(1) = 0;
+                end
+
                 
                 % pre-impact velocities right when they touch
                 dy_si = q(3);  % pre-impact link velocity
