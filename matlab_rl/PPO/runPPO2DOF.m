@@ -1,6 +1,6 @@
-env = bball_1_dof_Env();
+env = bball_1_dof_Env_apex_control(false);
 agent = rlPPOAgent(env.getObservationInfo,env.getActionInfo);
-opt = rlTrainingOptions('MaxEpisodes',50,"UseParallel",false,"MaxStepsPerEpisode",499);
+opt = rlTrainingOptions('MaxEpisodes',50,"UseParallel",false,"MaxStepsPerEpisode",1000);
 trainstats = train(agent, env, opt);
 
 %% 

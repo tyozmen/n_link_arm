@@ -12,7 +12,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         dt = .01; 
 
         N = 1000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        lim = 890; % max force. This is about 200lb-force which can be achieved by a $130 linear actuator
+        lim = 350; % max force. This is about 200lb-force which can be achieved by a $130 linear actuator
         ptch=[]
         init_qvals = [];
         Figure = [];
@@ -32,7 +32,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         % Variables needed for apex control
         t_ni = 0;       % time until next impact
         h_apx = 0;      % apex height;
-        h_d_apx = 3-.1;    % desired apex;
+        h_d_apx = 1-.1;    % desired apex;
         y_imp = 2-.05;      % pre-set impact height
         
         y_paddle_max = 2 +.2;
@@ -108,15 +108,18 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
             %  time track
             %  this.t = this.t + this.dt;
             this.t_ai = this.t_ai + this.dt;
-            
-            if this.t_ai > this.t_idle && this.f_idle == 0 % then stepped too far
-                t_ai_prev = this.t_ai - this.dt; % previous time after impact 
-                dt2idle = this.t_idle-(t_ai_prev);
-                this.t_ai = t_ai_prev + dt2idle;
-                this.dt = dt2idle;
-                this.f_idle = 1; % turn idle flag to 1 
-            else
-                this.dt = 0.01;
+
+            if this.usePDControl
+                
+                if this.t_ai > this.t_idle && this.f_idle == 0 % then stepped too far
+                    t_ai_prev = this.t_ai - this.dt; % previous time after impact 
+                    dt2idle = this.t_idle-(t_ai_prev);
+                    this.t_ai = t_ai_prev + dt2idle;
+                    this.dt = dt2idle;
+                    this.f_idle = 1; % turn idle flag to 1 
+                else
+                    this.dt = 0.01;
+                end
             end
             
             if this.usePDControl
@@ -151,9 +154,9 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
                 q(3) = 0; dq(1) = 0;
             end
             
-            if (q(1)+this.d) > (q(2)-this.r) % then ball went through the link. now let's find where contact happens
+            if (q(1)+this.d) >= (q(2)-this.r) % then ball went through the link. now let's find where contact happens
                 dt_temp = ((this.X(2)-this.r) - (this.X(1)+this.d))/(this.X(3)-this.X(4)); % dt to reach contact point
-                
+              
                 if this.usePDControl
                     this.t_sin = this.t_sin-this.dt+dt_temp;
                     this.y_des = this.y_imp - this.A*sin(2*pi*this.fr*this.t_sin);
