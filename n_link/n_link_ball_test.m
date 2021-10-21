@@ -14,7 +14,7 @@ m_b = 0.15;
 
 % Feedback Linearization to cancel the effects of gravity and friction. Arm
 % should be able stay at initial conditions.
-x0 = [pi/4 -pi/4 pi/2 -0.5 4 0 0 0 0 0];
+x0 = [pi/4 -pi/4 pi/2 0.5 4 0 0 0 0 0];
 opts = odeset('RelTol',1e-4,'AbsTol',1e-8,'Refine',30,'Events',@(t,X)contact_n_link_ball_v2(t,X,L,r,d)); 
 % opts = odeset('RelTol',1e-4,'AbsTol',1e-8,'Refine',30);
 [t1,y1]= ode45(@(t1,Q)n_link_ball_dynamics_FL_PD(Q,M,C,Tg,B,g),[0 4],x0,opts);

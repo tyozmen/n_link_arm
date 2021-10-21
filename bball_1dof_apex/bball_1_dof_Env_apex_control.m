@@ -32,7 +32,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         % Variables needed for apex control
         t_ni = 0;       % time until next impact
         h_apx = 0;      % apex height;
-        h_d_apx = 1-.1;    % desired apex;
+        h_d_apx = 3-.1;    % desired apex;
         y_imp = 2-.05;      % pre-set impact height
         
         y_paddle_max = 2 +.2;

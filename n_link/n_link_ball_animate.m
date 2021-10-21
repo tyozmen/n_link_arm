@@ -55,7 +55,7 @@ for i=5:length(X_opt)
         figure(f)
         axis([-sum(L)-.25 sum(L)+.25 -sum(L)-.25 sum(L)+.25]);
         drawnow                                	
-        pause(0.005)
+        %pause(0.2)
     end
 end
 end

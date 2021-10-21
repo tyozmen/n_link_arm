@@ -16,11 +16,13 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         d = 0.05;   % half thickness of the link
         e = .8;     % coeff of restitution
         m_b = .15;
+
+        dt_min = 1e-6;
         
         dt = .01; 
 
         N = 1000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        lim = 150; % bound for torques
+        lim = 15; % bound for torques
         ptch=[]
         init_qvals = [];
         Figure = [];
@@ -56,18 +58,16 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             n = length(B); %number of links
            
             % Initialize Observation settings
-            ObservationInfo = rlNumericSpec([2*n 1]);
+            ObservationInfo = rlNumericSpec([2*n+4 1]);
             ObservationInfo.Name = 'n_link and ball system states';
             ObservationInfo.Description = sprintf('q1-q%d, x_b, y_b, dq1-dq%d, dx_b, dy_b',n,n);
             
             % Initialize Action settings   
-            lim = 150;
             ActionInfo = rlNumericSpec([n 1], 'LowerLimit', -ones(n,1), 'UpperLimit', ones(n,1));
             ActionInfo.Name = 'n_link Action';
             
             % The following line implements built-in functions of RL env
             this = this@rl.env.MATLABEnvironment(ObservationInfo,ActionInfo);
-            this.lim = lim;
             this.init_qvals = [0:5*this.dt:pi];
             
             this.n = n;
@@ -266,20 +266,19 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             t_arr = this.t_arr;
         end
         
-        function [contact] = contact_detect(this,Q)
-            % Q is the next states the system will arive so check for
+       
+
+        function [xr, yr, slope, yshift, b, th,xn,yn, ee] = closest_point(this, State)
+             % Q is the next states the system will arive so check for
             % contact
-            ee = n_link_fwdKin(this,Q(1:this.n));
-            xb = Q(this.n+1);
-            yb = Q(this.n+2);
+            ee = n_link_fwdKin(this,State(1:this.n));
+            xb = State(this.n+1);
+            yb = State(this.n+2);
 
+            xn = ee(1) - this.L(this.n)*sin(State(this.n));    % x coordinate of nth link
+            yn = ee(2) - this.L(this.n)*cos(State(this.n));    % y coordinate of the nth link
+            slope = cos(State(this.n))/sin(State(this.n));
 
-
-            xn = ee(1) - this.L(this.n)*sin(Q(this.n));    % x coordinate of nth link
-            yn = ee(2) - this.L(this.n)*cos(Q(this.n));    % y coordinate of the nth link
-            slope = cos(Q(this.n))/sin(Q(this.n));
-
-            % y = slope*x+b  line equation of the arm
 
             b = yn - slope*xn;
 
@@ -293,6 +292,16 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             % closest point on the ball to the surface of the arm
             xr = xb + sin(th)*this.r;
             yr = yb - cos(th)*this.r;
+
+
+        end
+           
+
+        function [contact] = contact_detect(this,Q)
+
+            [xr, yr, slope, yshift, b, th, xn, yn, ee] = closest_point(this,Q);
+            % y = slope*x+b  line equation of the arm
+
             
             % project xn and ee to the surface of the arm to get the
             % surface end points
@@ -313,10 +322,17 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
 
             % is the closest point on the ball to the surface of the arm on the arm?
             eqn = slope*xr + b + yshift - yr;
-            eqn =-eqn
+            eqn =-eqn;
             
-            if eqn < 0 &&  canHappen % if eqn went below zero and contact could have happened then integration went too far we need to take a step back
+            [xrp, yrp, slopep, yshiftp, bp, thp, xnp, ynp, eep]  = closest_point(this,this.X);
+            eqnp = slopep*xrp + bp + yshiftp - yrp;
+            eqnp =-eqnp;
+
+
+            if eqnp >= 0 && eqn <= 0 && canHappen % if eqn went below zero and contact could have happened then integration went too far we need to take a step back
                 contact = 1;       
+            elseif eqnp <= 0 && eqn >= 0 && canHappen
+                contact = 1;
             else
                 contact = 0;
             end
@@ -385,7 +401,9 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             
             eqn = @(dt)slope(dt)*xr(dt) + b(dt) + yshift(dt) - yr(dt); % root of this eqn is the dt value we need
 
-            dt_temp = fzero(eqn,[0 this.dt]); 
+            dt_temp = fzero(eqn,[0 this.dt]);
+
+            %dt_temp = max(this.dt_min, fzero(eqn,[0 this.dt]))
             
         end
         
