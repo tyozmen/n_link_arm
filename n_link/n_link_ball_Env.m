@@ -195,7 +195,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             
             if this.X(this.n+2)-this.r <= 0 % ball is on the floor
                 IsDone = 1;
-                this.X(end) = 0;
+               % this.X(end) = 0;
                 Reward = Reward;
                 %%%%%%%%%%%%%%%% NEED TO FIGURE OUT REWARD SITUATION FOR
                 %%%%%%%%%%%%%%%% DROPPING THE BALL
@@ -327,19 +327,52 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
 
             xeep_l = ee(1) + this.d*sin(th);
             yeep_l = ee(2) - this.d*cos(th);
+
+            R = [cos(th) sin(th); -sin(th) cos(th)];
+            np_u = R*[xnp_u ; ynp_u];
+            xnp_u = np_u(1)
+            ynp_u = np_u(2);
+
+            np_l = R*[xnp_l ; ynp_l];
+            xnp_l = np_l(1)
+            ynp_l = np_l(2);
+
+            ee_u = R*[xeep_u ; yeep_u];
+            xeep_u = ee_u(1)
+            yeep_u = ee_u(2);
+
+            
+            ee_l = R*[xeep_l ; yeep_l];
+            xeep_l = ee_l(1);
+            yeep_l = ee_l(2);
+
+
+            r_u = R*[xr_u ; yr_u];
+            xr_u = r_u(1)
+            yr_u = r_u(2);
+
+
+            r_l = R*[xr_l ; yr_l];
+            xr_l = r_l(1)
+            yr_l = r_l(2);
+
+
             
             % can the contact happen? is the ball within the x values of the last link
             if xeep_u > xnp_u && xr_u >= xnp_u && xr_u <= xeep_u
-                canHappen = 1;
+                canHappen = 1
             elseif xeep_u < xnp_u && xr_u <= xnp_u && xr_u >= xeep_u
-                canHappen = 1;
+                canHappen = 2
             elseif xeep_l > xnp_l && xr_l >= xnp_l && xr_l <= xeep_l
-                canHappen = 1;
+                canHappen = 3
             elseif xeep_l < xnp_l && xr_l <= xnp_l && xr_l >= xeep_l
-                canHappen = 1;
+                canHappen = 4
             else
                 canHappen = 0;
             end
+
+
+
 
             % is the closest point on the ball to the surface of the arm on the arm?
 %             eqn = slope*xr + b + yshift - yr;
@@ -437,7 +470,12 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             
 %             eqn = @(dt)slope(dt)*xr(dt) + b(dt) + yshift(dt) - yr(dt); % root of this eqn is the dt value we need
 
-            dt_temp = fzero(eqn,[0 this.dt]);
+            try
+                dt_temp = fzero(eqn,[0 this.dt]);
+            catch
+                true
+            end
+            
 
             %dt_temp = max(this.dt_min, fzero(eqn,[0 this.dt]))
             

@@ -43,7 +43,7 @@ dim = [.7 .7 .2 .2];
 str=sprintf('t = %.2f',t_opt(1));
 a1 = annotation('textbox',dim,'String',str,'FitBoxToText','on');
 axis equal; %axis off
-for i=5:length(X_opt)
+for i=1:length(X_opt)
     if mod(i,25)==0 || i==2 || i==length(X_opt)
         for j = 1:n
             set(p(j), 'Visible', 'off');
