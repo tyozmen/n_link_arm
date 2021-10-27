@@ -5,12 +5,12 @@ env = n_link_ball_Env(M_eq,C_eq,Tg_eq,B, ones(n,1), false);
 
 nDelta = 32;
 nTop = 32;
-stepSize = .2;
-deltaStd = .05;
-nEpochs = 2;
+stepSize = .02;
+deltaStd = .01;
+nEpochs = 20;
 
 begin = tic;
-agent = ARSAgent(env, stepSize, deltaStd, nDelta, nTop, useBias=true, maxStepsPerEpisode=env.N);
+agent = ARSAgent(env, stepSize, deltaStd, nDelta, nTop, useBias=false, maxStepsPerEpisode=env.N);
 rewards = agent.learn(nEpochs, verbose=1);
 plot(rewards)
 figure()
