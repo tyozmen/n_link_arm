@@ -11,8 +11,8 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         
         dt = .01; 
 
-        N = 1000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        lim = 350; % max force. This is about 200lb-force which can be achieved by a $130 linear actuator
+        N = 2500; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        lim = 890; % max force. This is about 200lb-force which can be achieved by a $130 linear actuator
         ptch=[]
         init_qvals = [];
         Figure = [];
@@ -49,6 +49,8 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         f_idle = 0;     % flag for idle state
         y_des = 2;      % desired y position for the link
         dy_des = 0;     % desired y velocity for the link
+
+    	apx_des = 5;
     end
     
     properties(Access = protected)
@@ -155,7 +157,8 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
             end
             
             if (q(1)+this.d) >= (q(2)-this.r) % then ball went through the link. now let's find where contact happens
-                dt_temp = ((this.X(2)-this.r) - (this.X(1)+this.d))/(this.X(3)-this.X(4)); % dt to reach contact point
+                dt_temp = ((this.X(2)-this.r) - (this.X(1)+ ...
+                                                 this.d))/(this.X(3)-this.X(4)); % dt to reach contact point
               
                 if this.usePDControl
                     this.t_sin = this.t_sin-this.dt+dt_temp;
@@ -241,8 +244,14 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
             this.states_arr = [this.states_arr Observation];
             this.actions_arr = [this.actions_arr Action];
             this.t_arr = [this.t_arr this.t];
- 
-            Reward = -1e-2.*((this.h_d_apx + this.y_imp)-this.X(2)).^2;
+
+	        %Reward = -0.01*(this.h_apx-this.apx_des).^2;
+            %Reward = -0.01*((this.X(2) - (this.h_d_apx + this.y_imp+this.d+this.r)).^2);
+           
+            
+            %Reward = 50/1000  - 0.01*(this.X(2) - this.apx_des).^2;
+            Reward = 50/1000 - 0.01*(this.h_apx-this.apx_des).^2;
+             %Reward = this.X(2);
            
             IsDone = this.curStep >= this.N; %|| term;
             this.curStep = this.curStep + 1;
