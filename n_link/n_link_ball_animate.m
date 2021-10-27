@@ -43,8 +43,9 @@ dim = [.7 .7 .2 .2];
 str=sprintf('t = %.2f',t_opt(1));
 a1 = annotation('textbox',dim,'String',str,'FitBoxToText','on');
 axis equal; %axis off
-for i=1:length(X_opt)
-    if mod(i,25)==0 || i==2 || i==length(X_opt)
+[row,~] = size(X_opt);
+for i=1:row
+    if mod(i,1)==0 || i==2 || i==length(X_opt)
         for j = 1:n
             set(p(j), 'Visible', 'off');
             p(j) = patch(xdraw(i,:,j),ydraw(i,:,j),'b','FaceAlpha',.3);
@@ -55,7 +56,7 @@ for i=1:length(X_opt)
         figure(f)
         axis([-sum(L)-.25 sum(L)+.25 -sum(L)-.25 sum(L)+.25]);
         drawnow                                	
-        %pause(0.2)
+        pause(0.05)
     end
 end
 end

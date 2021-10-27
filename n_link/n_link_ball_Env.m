@@ -141,10 +141,13 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             
             % need to detect collision
             Q = [q;q_b;dq;dq_b];
-            [contact,upper,lower] = contact_detect(this,Q);
+            [contact, upper ,lower, cornerHit] = contact_detect(this,Q);
             
-            if contact
-                dt_temp = find_dt2contact(this,upper,lower);
+         
+            if cornerHit   % If the ball is going to hit the corner of the arm the episode is done
+                IsDone = 1;
+            elseif contact
+                dt_temp = find_dt2contact(this,upper,lower,Q);
                 if this.usePDControl
                     % Feedback Lin. + PD control for now to test
                     Kp = 55;
@@ -192,7 +195,11 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
            
             IsDone = this.curStep >= this.N; %|| term;
             this.curStep = this.curStep + 1;
-            
+
+            %%% Rewards for the following need to be adjusted
+            if cornerHit   % If the ball is going to hit the corner of the arm the episode is done
+                IsDone = 1;
+            end
             if this.X(this.n+2)-this.r <= 0 % ball is on the floor
                 IsDone = 1;
                % this.X(end) = 0;
@@ -205,9 +212,10 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         
         % Reset environment to initial state and output initial observation
         function InitialObservation = reset(this)
-            this.X(1:this.n,1) = this.q_des; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% need to change this
+            this.X(1:this.n,1) = this.q_des; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% need to change this to random around initial condition
             this.X(this.n+1:this.n+2,1) = [0.5; 4];
-            this.X(this.n+3:end-1,1) = 0;
+            this.X(this.n+3:end-2,1) = 0;
+            this.X(end-1,1) = 0;
             this.X(end,1) = 0;
             this.states_arr = [];
             this.actions_arr = [];
@@ -229,39 +237,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         
         
         % Helper methods to create the environment
-        % Discrete force 1 or 2
-%         function force = getForce(this,action)
-%             if ~ismember(action,this.ActionInfo.Elements)
-%                 error('Action must be %g for going left and %g for going right.',-this.MaxForce,this.MaxForce);
-%             end
-%             force = action;           
-%         end
-%         % update the action info based on max force
-%         function updateActionInfo(this)
-%             this.ActionInfo.Elements = this.MaxForce*[-1 1];
-%         end
-%         
-%         % Reward function
-%         function Reward = getReward(this)
-%             if ~this.IsDone
-%                 Reward = this.RewardForNotFalling;
-%             else
-%                 Reward = this.PenaltyForFalling;
-%             end          
-%         end
-%         
-%         % (optional) Visualization method
-%         function plot(this)
-%             this.Figure = figure('Color','w','Renderer','zbuffer');
-%             ha = gca(this.Figure);
-%             ha.XLimMode = 'manual';
-%             ha.YLimMode = 'manual';
-%             ha.XLim = [-5 5];
-%             ha.YLim = [-5 5];
-% 
-%             % Update the visualization
-% %             envUpdatedCallback(this)
-%         end
+        
         
         function [obs_arr, u_arr, t_arr] = get_arrays(this)
             obs_arr = this.states_arr;
@@ -271,7 +247,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         
        
 
-        function [xr_u, yr_u, xr_l, yr_l, slope, yshift, b, th,xn,yn, ee] = closest_point(this, State)
+        function [xb, yb, xr_u, yr_u, xr_l, yr_l, slope, xshift, yshift, b, th,xn,yn, ee] = closest_point(this, State)
              % Q is the next states the system will arive so check for
             % contact
             ee = n_link_fwdKin(this,State(1:this.n));
@@ -285,10 +261,10 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
 
             b = yn - slope*xn;
 
-            th = atan(slope); % angle of the surface wrt x axis
+            th = atan2(cos(State(this.n)),sin(State(this.n))); % angle of the surface wrt x axis
 
-            yshift = this.d/cos(th);
-
+            yshift = this.d*cos(th);
+            xshift = this.d*sin(th);
             % equation for the surface of the arm
             % y = slope*x + b + yshift
             
@@ -302,15 +278,15 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
 
         end
            
-
-        function [contact,upper,lower] = contact_detect(this,Q)
-
-            [xr_u, yr_u, xr_l, yr_l, slope, yshift, b, th, xn, yn, ee] = closest_point(this,Q);
+        function [xr_u,yr_u, xr_l, yr_l, xbR,xnR,xeeR, eqn_upper, eqn_lower, canHappenU, canHappenL] = canHappen(this,Q)
+           [xb, yb, xr_u, yr_u, xr_l, yr_l, slope, xshift, yshift, b, th, xn, yn, ee] = closest_point(this,Q);
             % y = slope*x+b  line equation of the arm
             % equations to check for upper and lower surfaces
-            eqn_upper = @(x,y)(slope*x+ b + yshift - y)*-1;
-            eqn_lower = @(x,y)(slope*x+ b - yshift - y)*-1;
+            eqn_upper = @(x,y)(slope*(x+xshift)+ b + yshift - y)*-1;
+            eqn_lower = @(x,y)(slope*(x-xshift)+ b - yshift - y)*-1;
+              
             
+                
             % project xn and ee to the surface of the arm to get the
             % surface end points
             
@@ -328,51 +304,78 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             xeep_l = ee(1) + this.d*sin(th);
             yeep_l = ee(2) - this.d*cos(th);
 
+            % Change of basis matrix (to switch to the rotated coordinate frame)
             R = [cos(th) sin(th); -sin(th) cos(th)];
-            np_u = R*[xnp_u ; ynp_u];
-            xnp_u = np_u(1)
-            ynp_u = np_u(2);
+            
+            
 
-            np_l = R*[xnp_l ; ynp_l];
-            xnp_l = np_l(1)
-            ynp_l = np_l(2);
 
+            % upper surface nth joint coordinates in the rotated coordinate frame
+            np_u = R*[xnp_u; ynp_u];
+            xnpR_u = np_u(1);
+            ynpR_u = np_u(2);
+
+            % lower surface nth joint coordinates in the rotated coordinate frame
+            np_l = R*[xnp_l; ynp_l];
+            xnpR_l = np_l(1);
+            ynpR_l = np_l(2);
+            
+            % upper surface ee coordinates in the rotated coordinate frame
             ee_u = R*[xeep_u ; yeep_u];
-            xeep_u = ee_u(1)
-            yeep_u = ee_u(2);
+            xeepR_u = ee_u(1);
+            yeepR_u = ee_u(2);
+
+            % lower surface ee coordinates in the rotated coordinate frame
+            ee_l = R*[xeep_l; yeep_l];
+            xeepR_l = ee_l(1);
+            yeepR_l = ee_l(2);
 
             
-            ee_l = R*[xeep_l ; yeep_l];
-            xeep_l = ee_l(1);
-            yeep_l = ee_l(2);
+            r_u = R*[xr_u; yr_u];
+            xrR_u = r_u(1);
+            yrR_u = r_u(2);
 
 
-            r_u = R*[xr_u ; yr_u];
-            xr_u = r_u(1)
-            yr_u = r_u(2);
+            r_l = R*[xr_l; yr_l];
+            xrR_l = r_l(1);
+            yrR_l = r_l(2);
 
+            % ball coordinates in the rotated coordinate frame
+            bR = R*[xb; yb];
+            xbR = bR(1);
+            ybR = bR(2);
 
-            r_l = R*[xr_l ; yr_l];
-            xr_l = r_l(1)
-            yr_l = r_l(2);
+            nR = R*[xn; yn];
+            xnR = nR(1);
 
-
-            
+            eeR = R*ee(1:2,1);
+            xeeR = eeR(1);
             % can the contact happen? is the ball within the x values of the last link
-            if xeep_u > xnp_u && xr_u >= xnp_u && xr_u <= xeep_u
-                canHappen = 1
-            elseif xeep_u < xnp_u && xr_u <= xnp_u && xr_u >= xeep_u
-                canHappen = 2
-            elseif xeep_l > xnp_l && xr_l >= xnp_l && xr_l <= xeep_l
-                canHappen = 3
-            elseif xeep_l < xnp_l && xr_l <= xnp_l && xr_l >= xeep_l
-                canHappen = 4
+            % 
+            % upper side
+            if xeepR_u > xnpR_u && xrR_u >= xnpR_u && xrR_u <= xeepR_u
+                canHappenU = 1;
+            elseif xeepR_u < xnpR_u && xrR_u <= xnpR_u && xrR_u >= xeepR_u
+                canHappenU = 2;
             else
-                canHappen = 0;
+                canHappenU = 0;
             end
+            % lower side
+            if xeepR_l > xnpR_l && xrR_l >= xnpR_l && xrR_l <= xeepR_l
+                canHappenL = 3;
+            elseif xeepR_l < xnpR_l && xrR_l <= xnpR_l && xrR_l >= xeepR_l
+                canHappenL = 4;
+            else
+                canHappenL = 0;
+            end 
+        end
+        
+        function [contact,upper,lower,cornerHit] = contact_detect(this,Q)
 
-
-
+            [xr_u, yr_u, xr_l, yr_l, xbR, xnR, xeeR, eqn_upper, eqn_lower, canHappenU, canHappenL] = canHappen(this,Q);
+            
+            % values from the previous time step
+            [prv_xr_u, prv_yr_u, prv_xr_l, prv_yr_l, prv_xbR, prv_xnR, prv_xeeR, prv_eqn_upper, prv_eqn_lower, prv_canHappenU, prv_canHappenL] = canHappen(this,this.X);
 
             % is the closest point on the ball to the surface of the arm on the arm?
 %             eqn = slope*xr + b + yshift - yr;
@@ -390,17 +393,31 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
 %             else
 %                 contact = 0;
 %             end
+            
+            
+            % if eqn went below zero and contact could have happened then integration went too far we need to take a step back    
+            if (eqn_upper(xr_u,yr_u) < 0 && eqn_lower(xr_u,yr_u) > 0 && canHappenU) || ... 
+                  (eqn_upper(xr_u,yr_u) < 0 && prv_eqn_upper(prv_xr_u,prv_yr_u) > 0 && prv_eqn_upper(prv_xr_l,prv_yr_l) > 0 && canHappenU)  
+                
+                contact = 1; lower = 0; upper = 1; cornerHit = 0;     
 
-            if eqn_upper(xr_u,yr_u) < 0 && eqn_lower(xr_u,yr_u) > 0 && canHappen % if eqn went below zero and contact could have happened then integration went too far we need to take a step back
-                contact = 1; lower = 0; upper = 1;       
-            elseif eqn_upper(xr_l,yr_l) < 0 && eqn_lower(xr_l,yr_l) > 0 && canHappen
-                contact = 1; lower = 1; upper = 0;
+            elseif (eqn_upper(xr_l,yr_l) < 0 && eqn_lower(xr_l,yr_l) > 0 && canHappenL) || ...
+                    (eqn_lower(xr_l,yr_l) > 0 && prv_eqn_lower(prv_xr_l,prv_yr_l) < 0 && prv_eqn_upper(prv_xr_l,prv_yr_l) < 0 && canHappenL)
+                    
+                contact = 2; lower = 1; upper = 0; cornerHit = 0;
+            elseif (canHappenL || canHappenU) == 0 && ...
+                    (((eqn_upper(xr_u,yr_u) < 0 && eqn_lower(xr_u,yr_u) > 0)||(eqn_upper(xr_l,yr_l) < 0 && eqn_lower(xr_l,yr_l) > 0)) || ...
+                    ((eqn_upper(xr_u,yr_u) < 0 && eqn_lower(xr_u,yr_u) < 0)&&(eqn_upper(xr_l,yr_l) > 0 && eqn_lower(xr_l,yr_l) > 0))) &&...
+                    (abs(xbR-xnR) <= this.r || abs(xbR-xeeR) <= this.r)
+%             elseif ((canHappenL || canHappenU) == 0) && (eqn_upper(xb,yb) < 0 && eqn_lower(xb,yb) > 0) && (abs(xbR-xnR) <= this.r || abs(xbR-xeeR) <= this.r)
+                contact = 0; lower = 0; upper = 0; cornerHit = 1;
+                
             else
-                contact = 0; lower = 0; upper = 0;
+                contact = 0; lower = 0; upper = 0; cornerHit = 0;
             end
         end
         
-        function [dt_temp] = find_dt2contact(this,upper,lower)
+        function [dt_temp] = find_dt2contact(this,upper,lower,Q)
             
             % to solve for what the necessary timestep needs to be we need
             % to write everything interms of dt and solve for the contact
@@ -432,10 +449,12 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             % y = slope*x+b  line equation of the arm
             b = @(dt) yn(dt) - slope(dt)*xn(dt);
             
-            th = @(dt) atan(slope(dt)); % angle of the surface wrt x axis
+%             th = @(dt) atan(slope(dt)); % angle of the surface wrt x axis
+            th = @(dt)atan2(cos(q_n(dt)),sin(q_n(dt)));
 
-            yshift = @(dt) this.d/cos(th(dt));
-            
+            yshift = @(dt) this.d*cos(th(dt));
+%             yshift = this.d*cos(th);
+            xshift = @(dt) this.d*sin(th(dt));
             % equation for the surface of the arm
             % y = slope*x + b + yshift
             
@@ -443,11 +462,11 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             if upper
                 xr = @(dt) xb_nxt(dt) + sin(th(dt))*this.r;
                 yr = @(dt) yb_nxt(dt) - cos(th(dt))*this.r;
-                eqn = @(dt)slope(dt)*xr(dt) + b(dt) + yshift(dt) - yr(dt); % root of this eqn is the dt value we need
+                eqn = @(dt)(slope(dt)*(xr(dt)+xshift(dt)) + b(dt) + yshift(dt) - yr(dt))*-1; % root of this eqn is the dt value we need
             elseif lower
                 xr = @(dt) xb_nxt(dt) - sin(th(dt))*this.r;
                 yr = @(dt) yb_nxt(dt) + cos(th(dt))*this.r;
-                eqn = @(dt)slope(dt)*xr(dt) + b(dt) - yshift(dt) - yr(dt); % root of this eqn is the dt value we need
+                eqn = @(dt)(slope(dt)*(xr(dt)-xshift(dt)) + b(dt) - yshift(dt) - yr(dt))*-1; % root of this eqn is the dt value we need
             end
             
 %             % project xn and ee to the surface of the arm
@@ -541,8 +560,8 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
 
             b = yn - slope*xn;
 
-            th = atan(slope); % angle of the surface wrt x axis
-
+%             th = atan(slope); % angle of the surface wrt x axis
+            th = atan2(cos(Q(this.n)),sin(Q(this.n)));
 %             yshift = this.nd/cos(th);
 
             % equation for the surface of the arm
