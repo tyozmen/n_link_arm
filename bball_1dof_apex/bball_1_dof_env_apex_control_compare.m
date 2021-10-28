@@ -6,7 +6,7 @@ env = bball_1_dof_Env_apex_control();
 %plot(env);
 
 reset(env);
-n_episodes = 1000;
+n_steps = 1000;
 begin = tic;
 y_des = [env.y_des];
 h_apx = [env.h_apx];
@@ -14,7 +14,7 @@ offset = env.y_imp+env.d+env.r;
 h_d_apx = [(env.h_d_apx+offset)];
 
 R = 0
-for i=1:n_episodes
+for i=1:n_steps
     [s,r,d,~] = step(env,0);
     y_des = [y_des env.y_des];
     h_apx = [h_apx env.h_apx];
@@ -24,7 +24,10 @@ for i=1:n_episodes
 %     end
 end
 
-fprintf("FPS: %f \n",  n_episodes/toc(begin));
+fprintf("Model Based Controller ------------------------------\n");
+fprintf("FPS: %f \n",  n_steps/toc(begin));
+fprintf("total err^2 reward: %f \n",  R);
+
 
 [states, actions, t] = get_arrays(env);
 
@@ -53,14 +56,14 @@ load('ars_1dof_agent.mat');
 %plot(env);
 
 s = reset(env);
-n_episodes = 1000;
+n_steps = 1000;
 begin = tic;
 y_des = [env.y_des];
 h_apx = [env.h_apx];
 offset = env.y_imp+env.d+env.r;
 h_d_apx = [(env.h_d_apx+offset)];
 R = 0
-for i=1:n_episodes
+for i=1:n_steps
     act = agent.policy(s);
     [s,r,d,~] = step(env,act);
     y_des = [y_des env.y_des];
@@ -70,7 +73,10 @@ for i=1:n_episodes
 %     end
 end
 
-fprintf("FPS: %f \n",  n_episodes/toc(begin));
+
+fprintf("ARS Controller ------------------------------\n");
+fprintf("FPS: %f \n",  n_steps/toc(begin));
+fprintf("total err^2 reward: %f \n",  R);
 
 [states, actions, t] = get_arrays(env);
 figure()

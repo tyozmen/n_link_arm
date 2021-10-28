@@ -22,7 +22,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         dt = .01; 
 
         N = 1000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        lim = 15; % bound for torques
+        lim = 35; % bound for torques
         ptch=[]
         init_qvals = [];
         Figure = [];
@@ -127,7 +127,9 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
 %                 u = min(this.lim, u);
                 Action = u;
             else
-                u = Action;
+                u_fl = double(C_tmp*this.X(this.n+3:end-2) + Tg_tmp*this.g);
+                Action = Action + u_fl;
+
             end
             
             d2q = double(-M_tmp\C_tmp*dq-M_tmp\Tg_tmp*this.g+M_tmp\this.B*Action);
@@ -147,39 +149,47 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             if cornerHit   % If the ball is going to hit the corner of the arm the episode is done
                 IsDone = 1;
             elseif contact
+
                 dt_temp = find_dt2contact(this,upper,lower,Q);
-                if this.usePDControl
-                    % Feedback Lin. + PD control for now to test
-                    Kp = 55;
-                    Kd = 111.5;
-                    u_fl = double(C_tmp*this.X(this.n+3:end-2) + Tg_tmp*this.g);
-                    u = u_fl+Kp.*rad2deg(this.q_des-this.X(1:this.n)) + Kd*rad2deg(-this.X(this.n+3:end-2));
-%                     this.y_des = this.y_imp - this.A*sin(2*pi*this.fr*this.t_sin);
-%                     if this.t_sin == 0
-%                         this.dy_des = this.y_des-q(1);
-%                     else
-%                         this.dy_des = -this.A*cos(2*pi*this.fr*this.t_sin)*2*pi*this.fr;
-%                     end
-% 
-%                     u_fl = this.m_s*this.g;
-%                     u = u_fl + kp*(this.y_des-q(1))+kd*(this.dy_des - q(3)); % to compare with bball_1_dof_main
-%                     %force limits
-                    u = max(-this.lim, u);
-                    u = min(this.lim, u);
-                    Action = u;
+
+                if dt_temp == -1
+                    isDone = 1;
                 else
-                    u = Action;
+                    if this.usePDControl
+                        % Feedback Lin. + PD control for now to test
+                        Kp = 55;
+                        Kd = 111.5;
+                        u_fl = double(C_tmp*this.X(this.n+3:end-2) + Tg_tmp*this.g);
+                        u = u_fl+Kp.*rad2deg(this.q_des-this.X(1:this.n)) + Kd*rad2deg(-this.X(this.n+3:end-2));
+    %                     this.y_des = this.y_imp - this.A*sin(2*pi*this.fr*this.t_sin);
+    %                     if this.t_sin == 0
+    %                         this.dy_des = this.y_des-q(1);
+    %                     else
+    %                         this.dy_des = -this.A*cos(2*pi*this.fr*this.t_sin)*2*pi*this.fr;
+    %                     end
+    % 
+    %                     u_fl = this.m_s*this.g;
+    %                     u = u_fl + kp*(this.y_des-q(1))+kd*(this.dy_des - q(3)); % to compare with bball_1_dof_main
+    %                     %force limits
+                        u = max(-this.lim, u);
+                        u = min(this.lim, u);
+                        Action = u;
+                    else
+                        u = Action;
+                    end
+                    d2q = double(-M_tmp\C_tmp*dq-M_tmp\Tg_tmp*this.g+M_tmp\this.B*Action);
+                    dq = [this.X(this.n+3:end); d2q; 0; -this.g];
+                    q = this.X + dq*dt_temp;    % pre-impact states 
+                    
+                    Q = impact(this,q);         % post-impact states
+                    this.t = this.t + dt_temp;
                 end
-                d2q = double(-M_tmp\C_tmp*dq-M_tmp\Tg_tmp*this.g+M_tmp\this.B*Action);
-                dq = [this.X(this.n+3:end); d2q; 0; -this.g];
-                q = this.X + dq*dt_temp;    % pre-impact states 
-                
-                Q = impact(this,q);         % post-impact states
-                this.t = this.t + dt_temp;
-                
-            else
+                    
+             else
                 this.t = this.t + this.dt;
-            end
+             end
+        
+            
             
             
             this.X = Q;
@@ -190,8 +200,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             this.t_arr = [this.t_arr this.t];
             
             
-            % 0 for now will be changed to reflect a desired position
-            Reward = -1e-2.*((this.h_d_apx + this.y_imp)-this.X(this.n+2)).^2;
+            Reward = 200/1000 - 1e-2.*((this.h_d_apx + this.y_imp)-this.X(this.n+2)).^2;
            
             IsDone = this.curStep >= this.N; %|| term;
             this.curStep = this.curStep + 1;
@@ -396,19 +405,30 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             
             
             % if eqn went below zero and contact could have happened then integration went too far we need to take a step back    
-            if (eqn_upper(xr_u,yr_u) < 0 && eqn_lower(xr_u,yr_u) > 0 && canHappenU) || ... 
-                  (eqn_upper(xr_u,yr_u) < 0 && prv_eqn_upper(prv_xr_u,prv_yr_u) > 0 && prv_eqn_upper(prv_xr_l,prv_yr_l) > 0 && canHappenU)  
+            if (eqn_upper(xr_u,yr_u) < 0 && eqn_lower(xr_u,yr_u) > 0 && canHappenU) ...
+                    || (eqn_upper(xr_u,yr_u) > 0 && eqn_lower(xr_u,yr_u) < 0 && canHappenU)...
+                    || (eqn_upper(xr_u,yr_u) < 0 && prv_eqn_upper(prv_xr_u,prv_yr_u) > 0 && prv_eqn_upper(prv_xr_l,prv_yr_l) > 0 && canHappenU) ...
+                    || (eqn_upper(xr_u,yr_u) > 0 && prv_eqn_upper(prv_xr_u,prv_yr_u) < 0 && prv_eqn_upper(prv_xr_l,prv_yr_l) < 0 && canHappenU)
                 
                 contact = 1; lower = 0; upper = 1; cornerHit = 0;     
 
-            elseif (eqn_upper(xr_l,yr_l) < 0 && eqn_lower(xr_l,yr_l) > 0 && canHappenL) || ...
-                    (eqn_lower(xr_l,yr_l) > 0 && prv_eqn_lower(prv_xr_l,prv_yr_l) < 0 && prv_eqn_upper(prv_xr_l,prv_yr_l) < 0 && canHappenL)
+            elseif (eqn_upper(xr_l,yr_l) < 0 && eqn_lower(xr_l,yr_l) > 0 && canHappenL)...
+                    || (eqn_upper(xr_l,yr_l) > 0 && eqn_lower(xr_l,yr_l) < 0 && canHappenL)...
+                    || (eqn_lower(xr_l,yr_l) > 0 && prv_eqn_lower(prv_xr_l,prv_yr_l) < 0 && prv_eqn_upper(prv_xr_l,prv_yr_l) < 0 && canHappenL)...
+                    || (eqn_lower(xr_l,yr_l) < 0 && prv_eqn_lower(prv_xr_l,prv_yr_l) > 0 && prv_eqn_upper(prv_xr_l,prv_yr_l) > 0 && canHappenL)
                     
                 contact = 2; lower = 1; upper = 0; cornerHit = 0;
+%                     (((eqn_upper(xr_u,yr_u) <= 0 && eqn_lower(xr_u,yr_u) > 0)||(eqn_upper(xr_l,yr_l) < 0 && eqn_lower(xr_l,yr_l) >= 0)) || ...
+%                     ((eqn_upper(xr_u,yr_u) < 0 && eqn_lower(xr_u,yr_u) < 0)&&(eqn_upper(xr_l,yr_l) > 0 && eqn_lower(xr_l,yr_l) > 0))) &&...
+%                     (abs(xbR-xnR) <= this.r || abs(xbR-xeeR) <= this.r)
             elseif (canHappenL || canHappenU) == 0 && ...
-                    (((eqn_upper(xr_u,yr_u) <= 0 && eqn_lower(xr_u,yr_u) > 0)||(eqn_upper(xr_l,yr_l) < 0 && eqn_lower(xr_l,yr_l) >= 0)) || ...
-                    ((eqn_upper(xr_u,yr_u) < 0 && eqn_lower(xr_u,yr_u) < 0)&&(eqn_upper(xr_l,yr_l) > 0 && eqn_lower(xr_l,yr_l) > 0))) &&...
-                    (abs(xbR-xnR) <= this.r || abs(xbR-xeeR) <= this.r)
+                     (  (eqn_upper(xr_u,yr_u) <= 0 && eqn_lower(xr_u,yr_u) > 0) ...
+                    ||  (eqn_upper(xr_l,yr_l) < 0 && eqn_lower(xr_l,yr_l) >= 0)  ...
+                    ||  (eqn_upper(xr_u,yr_u) >= 0 && eqn_lower(xr_u,yr_u) < 0) ...
+                    ||  (eqn_upper(xr_l,yr_l) > 0 && eqn_lower(xr_l,yr_l) <= 0) ...
+                    ||  ( (eqn_upper(xr_u,yr_u) < 0 && eqn_lower(xr_u,yr_u) < 0) && (eqn_upper(xr_l,yr_l) > 0 && eqn_lower(xr_l,yr_l) > 0))) ...
+                    &&  (abs(xbR-xnR) <= this.r || abs(xbR-xeeR) <= this.r)
+
 %             elseif ((canHappenL || canHappenU) == 0) && (eqn_upper(xb,yb) < 0 && eqn_lower(xb,yb) > 0) && (abs(xbR-xnR) <= this.r || abs(xbR-xeeR) <= this.r)
                 contact = 0; lower = 0; upper = 0; cornerHit = 1;
                 
@@ -492,7 +512,9 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             try
                 dt_temp = fzero(eqn,[0 this.dt]);
             catch
-                true
+                eqn(0)
+                eqn(this.dt)
+                dt_temp = -1;
             end
             
 

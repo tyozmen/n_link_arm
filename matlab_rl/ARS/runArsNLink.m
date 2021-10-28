@@ -4,10 +4,10 @@ n = 3;
 env = n_link_ball_Env(M_eq,C_eq,Tg_eq,B, ones(n,1), false);
 
 nDelta = 32;
-nTop = 32;
-stepSize = .02;
-deltaStd = .01;
-nEpochs = 20;
+nTop = 4;
+stepSize = .2;
+deltaStd = .1;
+nEpochs = 200;
 
 begin = tic;
 agent = ARSAgent(env, stepSize, deltaStd, nDelta, nTop, useBias=false, maxStepsPerEpisode=env.N);
@@ -16,7 +16,7 @@ plot(rewards)
 figure()
 fprintf("EPS: %f \n",  nEpochs*2*nDelta/toc(begin));
 %% 
-[R,X] = doArsRollout(agent.policy, agent.env);
+[R,X] = doArsRollout(agent.policy, agent.env, env.N);
 [states, actions, t] = get_arrays(agent.env);
 
 
@@ -28,3 +28,7 @@ plot(X);
 hold on;
 %plot(repmat(env.target_state', size(X,1)), '--')
 %plot(xhist(1,:), xhist(3,:));
+
+
+figure()
+plot(actions')

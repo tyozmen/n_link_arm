@@ -1,7 +1,7 @@
-clear all
-close all
+%clear all
+%close all
 
-env = bball_1_dof_Env_apex_control();
+env = bball_1_dof_Env_apex_control(false);
 %plot(env);
 
 reset(env);
@@ -13,7 +13,7 @@ offset = env.y_imp+env.d+env.r;
 h_d_apx = [(env.h_d_apx+offset)];
 R = 0;
 for i=1:n_episodes
-    [s,r,d,~] = env.step(0);
+    [s,r,d,~] = env.step(acts(i));
     y_des = [y_des env.y_des];
     h_apx = [h_apx env.h_apx];
     h_d_apx = [h_d_apx env.h_d_apx+offset];
