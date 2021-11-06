@@ -38,10 +38,15 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
         t_arr = [];
         animate = false;
         
+        %q_des = [-pi/3; pi/3; pi/2];
         q_des = [-pi/6; pi/2+pi/6; pi/2];
-        q_init = [-pi/6; pi/2+pi/6; pi/2-.05];
-        q_d_arr = [];
+        x_init = 1.0;
+        x_max = 4.0;
+        y_init = 4;
         usePDControl = true; % wether to use the model based control or not
+
+        q_init = [-pi/6; pi/2+pi/6; pi/2];
+        q_d_arr = [];
         % Variables needed for apex control
         first_hit = 1;
         % path for next desired impact
@@ -57,7 +62,6 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
         h_apx = 0;
         h_d_apx = 2;    % desired apex;
         y_imp = .5+.15;      % pre-set impact height
-
     end
     
     properties(Access = protected)
@@ -106,6 +110,7 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
         % given action for one step.
         function [Observation,Reward,IsDone,LoggedSignals] = step(this,Action)
             LoggedSignals = [];
+            isDone = 0;
             Action = max(-1, Action);
             Action = min(1, Action);
             Action = Action*this.lim;
@@ -185,9 +190,9 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
             
             % need to detect collision
             Q = [q;q_b;dq;dq_b];
-            if any(isnan(Q)) || ~all(isreal(Q))
-                true
-            end
+%             if any(isnan(Q)) || ~all(isreal(Q))
+%                 true
+%             end
             [contact, upper ,lower, cornerHit] = contact_detect(this,Q);
             
             
@@ -200,23 +205,6 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
                     isDone = 1;
                 else
                     if this.usePDControl
-                        % Feedback Lin. + PD control for now to test
-%                         Kp = 15;
-%                         Kd = 1;
-%                         u_fl = double(C_tmp*this.X(this.n+3:end-2) + Tg_tmp*this.g);
-%                         u = u_fl+Kp.*rad2deg(this.q_init-this.X(1:this.n)) + Kd*rad2deg(-this.X(this.n+3:end-2));
-%     %                     this.y_des = this.y_imp - this.A*sin(2*pi*this.fr*this.t_sin);
-%     %                     if this.t_sin == 0
-%     %                         this.dy_des = this.y_des-q(1);
-%     %                     else
-%     %                         this.dy_des = -this.A*cos(2*pi*this.fr*this.t_sin)*2*pi*this.fr;
-%     %                     end
-%     % 
-%     %                     u_fl = this.m_s*this.g;
-%     %                     u = u_fl + kp*(this.y_des-q(1))+kd*(this.dy_des - q(3)); % to compare with bball_1_dof_main
-%     %                     %force limits
-%                         u = max(-this.lim, u);
-%                         u = min(this.lim, u);
                         Action = u;
                     else
                         u = Action;
@@ -289,10 +277,8 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
             this.states_arr = [this.states_arr InitialObservation];
             
             this.t_arr = [this.t_arr 0];
-%             this.ptch = [];
+
             this.curStep = 0; 
-            
-            % notifyEnvUpdated(this);
         end
     end
    
@@ -442,24 +428,6 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
             
             % values from the previous time step
             [prv_xr_u, prv_yr_u, prv_xr_l, prv_yr_l, prv_xbR, prv_xnR, prv_xeeR, prv_eqn_upper, prv_eqn_lower, prv_canHappenU, prv_canHappenL] = canHappen(this,this.X);
-
-            % is the closest point on the ball to the surface of the arm on the arm?
-%             eqn = slope*xr + b + yshift - yr;
-%             eqn =-eqn;
-%             
-%             [xrp, yrp, slopep, yshiftp, bp, thp, xnp, ynp, eep]  = closest_point(this,this.X);
-%             eqnp = slopep*xrp + bp + yshiftp - yrp;
-%             eqnp =-eqnp;
-
-
-%             if eqnp > 0 && eqn < 0 && canHappen % if eqn went below zero and contact could have happened then integration went too far we need to take a step back
-%                 contact = 1;       
-%             elseif eqnp < 0 && eqn > 0 && canHappen
-%                 contact = 1;
-%             else
-%                 contact = 0;
-%             end
-            
             
             % if eqn went below zero and contact could have happened then integration went too far we need to take a step back    
             if (eqn_upper(xr_u,yr_u) < 0 && eqn_lower(xr_u,yr_u) > 0 && canHappenU) ...
@@ -508,10 +476,7 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
             
             q_nxt = @(dt)q + dq*dt;            % next joint angles
             xb_nxt = @(dt)q_b(1) + dq_b(1)*dt; % next x_b
-            yb_nxt = @(dt)q_b(2) + dq_b(2)*dt; % next y_b
-
-%             Q_nxt = @(dt)[q_nxt(dt);q_b_nxt(dt)];
-            
+            yb_nxt = @(dt)q_b(2) + dq_b(2)*dt; % next y_b            
             
             x_ee = @(dt)this.L'*sin(q_nxt(dt)); % next x_ee (basically forward kinematics)
             y_ee = @(dt)this.L'*cos(q_nxt(dt)); % next y_ee
@@ -526,11 +491,10 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
             % y = slope*x+b  line equation of the arm
             b = @(dt) yn(dt) - slope(dt)*xn(dt);
             
-%             th = @(dt) atan(slope(dt)); % angle of the surface wrt x axis
             th = @(dt)atan2(cos(q_n(dt)),sin(q_n(dt)));
 
             yshift = @(dt) this.d*cos(th(dt));
-%             yshift = this.d*cos(th);
+
             xshift = @(dt) this.d*sin(th(dt));
             % equation for the surface of the arm
             % y = slope*x + b + yshift
@@ -545,32 +509,12 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
                 yr = @(dt) yb_nxt(dt) + cos(th(dt))*this.r;
                 eqn = @(dt)(slope(dt)*(xr(dt)-xshift(dt)) + b(dt) - yshift(dt) - yr(dt))*-1; % root of this eqn is the dt value we need
             end
-            
-%             % project xn and ee to the surface of the arm
-%             xnp = @(dt) xn(dt) - this.d*sin(th(dt));
-%             ynp = @(dt) yn(dt) + this.d*cos(th(dt));
-%             
-%             xeep = @(dt) x_ee(dt) - this.d*sin(th(dt)); 
-%             yeep = @(dt) y_ee(dt) + this.d*cos(th(dt));
-%             
-%             % is the closest point on the ball to the surface of the arm on the arm?
-% 
-%             xynp2xyeep = @(dt) sqrt((xnp(dt)-xeep(dt))^2+(ynp(dt)-yeep(dt))^2);   % distance from xynp to xyeep
-% 
-%             xyr2xynp = @(dt) sqrt((xnp(dt)-xr(dt))^2+(ynp(dt)-yr(dt))^2);         % distance from xyr to xynp
-%             xyr2xyeep = @(dt) sqrt((xr(dt)-xeep(dt))^2+(yr(dt)-yeep(dt))^2);      % distance from xyr to xyeep
-% 
-%             % if the closest point on the ball is on the surface of the arm then
-%             % xynp2xyeep =  xyr2xynp + xyr2xyeep (if point C is on line segment AB then AB = AC + CB)
-%             eqn = @(dt) xyr2xyeep(dt) + xyr2xynp(dt) - xynp2xyeep(dt);
-            
-%             eqn = @(dt)slope(dt)*xr(dt) + b(dt) + yshift(dt) - yr(dt); % root of this eqn is the dt value we need
 
             try
                 dt_temp = fzero(eqn,[0 this.dt]);
             catch
-                eqn(0)
-                eqn(this.dt)
+%                 eqn(0)
+%                 eqn(this.dt)
                 dt_temp = -1;
             end
             

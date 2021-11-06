@@ -27,3 +27,4 @@ fprintf("EPS: %f \n",  n_steps/toc(begin));
 figure(); plot(env.t_arr,env.states_arr(1:3,:)); hold on; plot(env.t_arr(1:end-1),env.q_d_arr);
 figure(); plot(env.t_arr,env.states_arr(4:5,:)); 
 figure(); plot(env.t_arr(1:end-1),h_d_apx,env.t_arr(1:end-1),h_apx);
+figure(); plot(env.t_arr(1:end-1),env.actions_arr);legend('1','2','3')
