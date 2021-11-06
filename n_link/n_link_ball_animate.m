@@ -56,7 +56,7 @@ for i=1:row
         figure(f)
         axis([-sum(L)-.25 sum(L)+.25 -sum(L)-.25 sum(L)+.25]);
         drawnow                                	
-        pause(0.05)
+        pause(0.01)
     end
 end
 end
