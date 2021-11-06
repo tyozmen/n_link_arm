@@ -13,7 +13,7 @@ import torch
 def run_ppo(seed):
     torch.set_num_threads(1)
     algo = 'ppo'
-    env_script = "make_1dof_env"
+    env_script = "make_n_link_ball_env"
     env_partial = partial(MatlabGymMmapWrapper, "/home/sgillen/work/n_link_arm/", env_script)
     register("n_link_arm-v0", entry_point = env_partial)
 
@@ -26,18 +26,18 @@ def run_ppo(seed):
                 seed = int(seed),
                 tensorboard_log=f"./sb3_data/tensorboard/{env_script}",
                 device='cpu',
-                policy_kwargs={"net_arch":[64,64], "log_std_init":-3},
+                policy_kwargs={"net_arch":[64,64], "log_std_init":-2},
                 n_steps=4096,
-                batch_size=256,
+                batch_size=512,
                 gae_lambda=0.95,
                 gamma=0.99,
-                n_epochs=10,
+                n_epochs=3,
                 ent_coef=0.001,
-                learning_rate=2.5e-4,
+                learning_rate=1e-3,
                 clip_range=0.2
                 )
     print("learning")
-    model.learn(2e6)
+    model.learn(2.5e6)
     print("learned")
     model.save(f"./sb3_data/{env_script}/{algo}/{seed}/model.pkl")
     env.save(f"./sb3_data/{env_script}/{algo}/{seed}/vecnormalize.pkl")

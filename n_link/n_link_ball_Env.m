@@ -38,10 +38,14 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         t_arr = [];
         animate = false;
         
-        q_des = [pi/4; -pi/4; pi/2];
+        %q_des = [-pi/3; pi/3; pi/2];
+        q_des = [-pi/6; 7*pi/12; pi/2]
+        x_init = 1.0;
+        x_max = 4.0;
+        y_init = 4;
         usePDControl = true; % wether to use the model based control or not
         % Variables needed for apex control
-        h_d_apx = 3-.1;    % desired apex;
+        h_d_apx = 1-.1;    % desired apex;
         y_imp = 2-.05;      % pre-set impact height
     end
     
@@ -91,6 +95,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         % given action for one step.
         function [Observation,Reward,IsDone,LoggedSignals] = step(this,Action)
             LoggedSignals = [];
+            isDone = 0;
             Action = max(-1, Action);
             Action = min(1, Action);
             Action = Action*this.lim;
@@ -143,18 +148,25 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             
             % need to detect collision
             Q = [q;q_b;dq;dq_b];
+
             [contact, upper ,lower, cornerHit] = contact_detect(this,Q);
-            
-         
-            if cornerHit   % If the ball is going to hit the corner of the arm the episode is done
-                IsDone = 1;
-            elseif contact
+            th1 = atan(cos(Q(this.n))/sin(Q(this.n)));
+            th2 = atan(cos(this.X(this.n))/sin(this.X(this.n)));
 
-                dt_temp = find_dt2contact(this,upper,lower,Q);
-
-                if dt_temp == -1
+            if contact
+                
+                if (abs(th1) > pi/4 || abs(th2) > pi/4)
                     isDone = 1;
-                else
+                elseif cornerHit   % If the ball is going to hit the corner of the arm the episode is done
+                    isDone = 1;
+                else 
+                   dt_temp = find_dt2contact(this,upper,lower,Q);
+                    if dt_temp == -1
+                        isDone = 1;
+                    end
+                end
+            end
+            if contact && ~isDone
                     if this.usePDControl
                         % Feedback Lin. + PD control for now to test
                         Kp = 55;
@@ -177,21 +189,21 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
                     else
                         u = Action;
                     end
+
                     d2q = double(-M_tmp\C_tmp*dq-M_tmp\Tg_tmp*this.g+M_tmp\this.B*Action);
                     dq = [this.X(this.n+3:end); d2q; 0; -this.g];
                     q = this.X + dq*dt_temp;    % pre-impact states 
                     
                     Q = impact(this,q);         % post-impact states
                     this.t = this.t + dt_temp;
-                end
-                    
-             else
-                this.t = this.t + this.dt;
-             end
+                  
+           else
+             this.t = this.t + this.dt;
+           end
+            
+            
+            
         
-            
-            
-            
             this.X = Q;
             Observation = this.X;
             
@@ -199,22 +211,21 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             this.actions_arr = [this.actions_arr Action];
             this.t_arr = [this.t_arr this.t];
             
-            
-            Reward = 200/1000 - 1e-2.*((this.h_d_apx + this.y_imp)-this.X(this.n+2)).^2;
-           
-            IsDone = this.curStep >= this.N; %|| term;
-            this.curStep = this.curStep + 1;
+            ypen = -1e-2*((this.h_d_apx + this.y_imp)-this.X(this.n+2)).^2;
+            xpen = -1e-2*((this.x_init)-this.X(this.n+1)).^2;
+            alive = 1;
+            Reward = alive + xpen + ypen;
 
-            %%% Rewards for the following need to be adjusted
-            if cornerHit   % If the ball is going to hit the corner of the arm the episode is done
-                IsDone = 1;
+            ball_x = this.X(this.n+1);
+            if abs(ball_x) > this.x_max
+                isDone = 1;
             end
+           
+            IsDone = isDone || this.curStep >= this.N; %|| term;
+            this.curStep = this.curStep + 1;
+       
             if this.X(this.n+2)-this.r <= 0 % ball is on the floor
                 IsDone = 1;
-               % this.X(end) = 0;
-                Reward = Reward;
-                %%%%%%%%%%%%%%%% NEED TO FIGURE OUT REWARD SITUATION FOR
-                %%%%%%%%%%%%%%%% DROPPING THE BALL
             end
             
         end
@@ -222,7 +233,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         % Reset environment to initial state and output initial observation
         function InitialObservation = reset(this)
             this.X(1:this.n,1) = this.q_des; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% need to change this to random around initial condition
-            this.X(this.n+1:this.n+2,1) = [0.5; 4];
+            this.X(this.n+1:this.n+2,1) = [this.x_init; this.y_init];
             this.X(this.n+3:end-2,1) = 0;
             this.X(end-1,1) = 0;
             this.X(end,1) = 0;
@@ -512,8 +523,8 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             try
                 dt_temp = fzero(eqn,[0 this.dt]);
             catch
-                eqn(0)
-                eqn(this.dt)
+                %eqn(0)
+                %eqn(this.dt)
                 dt_temp = -1;
             end
             
