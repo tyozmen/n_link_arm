@@ -21,6 +21,8 @@ end
 sum(rewards)
 [states, actions, t] = env.get_arrays();
 
+bball_1_dof_animate(t,states',env.r,env.d)
+
 plot(states')
 legend("y_s", "y_b", "dy_s", "dy_b")
 figure()
