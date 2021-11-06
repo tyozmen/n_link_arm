@@ -4,7 +4,7 @@ L = 1*ones(n,1);
 [M,C,Tg,B] = manipEqns(n);
 [M_eq,C_eq,Tg_eq] = sym2anonFnc(M,C,Tg);
 
-env = n_link_ball_Env_test(M_eq,C_eq,Tg_eq,B,L,true);
+env = n_link_ball_Env(M_eq,C_eq,Tg_eq,B,L,true);
 %plot(env);
 h_d_apx = [];
 h_apx = [];

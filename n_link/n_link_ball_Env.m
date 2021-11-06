@@ -15,8 +15,8 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         r = 0.1;    % radius of the ball
         d = 0.05;   % half thickness of the link
         e = .8;     % coeff of restitution
-%         m_b = .15;
-        m_b = 2;
+        m_b = .15;
+%         m_b = 2;
         dt_min = 1e-6;
         
         dt = .01; 
@@ -525,7 +525,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             
         end
         
-        function [q_post] = impact(this,q)
+        function [q_post,d_xy] = impact(this,q)
             % take pre-impact states and and spit post-impact ones
             
             [~,~,l_imp,th] = n_link_impact_point(this,q);    % get the impact point and the distance it happens from the nth link, th is the surface angle wrt x-axis
@@ -563,10 +563,12 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             V_bf = R'*Vr_bf; 
             F = R'*Fr;
             
-            % using the Eqn 13 from "Impact  Configurations  and  Measures for Kinematically  Redundant  and Multiple  Armed Robot Systems", Ian D. Walker
+            % using the Eqn 13 from "Impact  Configurations  and  Measures
+            % for Kinematically  Redundant  and Multiple  Armed Robot Systems", Ian D. Walker,1994
             delta_dq = M_imp\J_imp(1:2,:)'*F;
             
             q_post = [q(1:this.n+2,1); q(this.n+3:end-2,1)+delta_dq; V_bf(1); V_bf(2)];
+            d_xy = J_imp(1:2,:)*q_post(this.n+3:end-2,1); %post impact xy velocities
         end
         
         function [x_imp,y_imp,l_imp,th] = n_link_impact_point(this,Q)
@@ -627,6 +629,195 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             end
             J(3,this.n) = 1;
 
+        end
+
+        function [x_path,y_path,th_path, t_des] = desired_impact(this,q,d_xy_ee)
+            % states after previous impact 
+            dx_b = q(end-1,1);
+            dy_b = q(end,1);
+            x_b = q(this.n+1,1);
+            y_b = q(this.n+2,1);
+            
+            % Computing states of the ball for all time instants in the current bounce
+            t_flight = 2*dy_b/this.g;
+            this.h_apx = .5*(dy_b^2)/this.g+y_b; %apex height for this impact
+
+            % pre-impact values at next impact since we want to hit the ball at
+            % the same height
+            y_b_nxt = y_b;
+            x_b_nxt = x_b+dx_b*t_flight;
+            dy_b_nxt = -dy_b;
+            dx_b_nxt = dx_b;
+            
+            
+
+            Vb_y_des = sqrt(this.h_d_apx*2*this.g); % desired y velocity to reach the desired apx height
+            t_flight_nxt = 2*Vb_y_des/this.g;       % time of fligth for next impact
+            Vb_x_des = (this.x_des-x_b_nxt)/t_flight_nxt;
+            
+            R1 = @(phi)[cos(phi) sin(phi)];    % first row of the change of basis matrix
+            R2 = @(phi)[-sin(phi) cos(phi)];   % second row of the chane of basis matrix
+                
+            % Vbx_hat_pre = Vbx_hat_post swince there is no friction between th
+            % ball and the arm. Using this we can calculate what the
+            % surface angle needs to be for the next impact
+
+            Vb_x_hat_post = @(phi) R1(phi)*[Vb_x_des;Vb_y_des];
+            Vb_x_hat_pre  = @(phi) R1(phi)*[dx_b_nxt; dy_b_nxt];
+            eqn1 = @(phi)Vb_x_hat_post(phi)-Vb_x_hat_pre(phi);
+
+            % for the right phi eqn1 should be zero
+            phi = fzero(eqn1,[-pi/2 pi/2]);
+            R = [R1(phi);R2(phi)];
+            x_ee_nxt = x_b_nxt+(this.r+this.d)*sin(phi);
+            y_ee_nxt = y_b_nxt-(this.r+this.d)*cos(phi);
+            th_ee_nxt = pi/2-phi;
+
+            q_nxt = n_link_invKin(this,x_ee_nxt,y_ee_nxt,th_ee_nxt,[this.L(1:end-1,1); this.L(end,1)/2],q);
+            J_nxt = nlink_Jacobian(this,q_nxt,[this.L(1:end-1,1); this.L(end,1)/2]);
+            M_nxt = this.M(q_nxt);
+
+            Vb_y_hat_post = R2(phi)*[Vb_x_des;Vb_y_des];  % desired post impact y_hat velocity
+            Vb_y_hat_pre  = R2(phi)*[dx_b_nxt; dy_b_nxt]; % pre_impact y_hat velocity
+            
+            % since we know Vb_y_hat_post then we know what the normal force needs to be
+            Fy_hat = this.m_b*(Vb_y_hat_post - Vb_y_hat_pre);
+            F_hat = [0;Fy_hat];
+            R = [R1(phi);R2(phi)];
+            F_nxt = R'*F_hat;
+            delta_dq_nxt = M_nxt\J_nxt(1:2,:)'*F_nxt;
+            delta_Vee = J_nxt(1:2,:)*delta_dq_nxt;
+            
+            Vee_xy = R'*[0;(Vb_y_hat_post+this.e*Vb_y_hat_pre -R2(phi)*delta_Vee)/(1+this.e)];
+            Vee_yhat_pre = (Vb_y_hat_post+this.e*Vb_y_hat_pre -R2(phi)*delta_Vee)/(1+this.e);
+            dth_ee_nxt = -Vee_yhat_pre/(this.L(end,1)/2);
+            % desired end effector velocities for the next impact
+            Vee_x_pre = Vee_xy(1);
+            Vee_y_pre = Vee_xy(2);
+            
+            
+            ee_curr = impact_fwdKin(this,q,[this.L(1:end-1,1); this.L(end,1)/2]);
+            xee_curr = ee_curr(1);
+            yee_curr = ee_curr(2);
+            thee_curr =ee_curr(3);
+            dxee_curr = d_xy_ee(1);
+            dyee_curr = d_xy_ee(2);
+            dthee_curr = q(end-2,1);
+
+            % create the xy-trajectory from current point to the desired point
+            t_path = [this.t this.t+t_flight];
+            x = [xee_curr x_ee_nxt];
+            y = [yee_curr y_ee_nxt];
+            th = [thee_curr th_ee_nxt];
+
+            y_path = spline(t_path,[dyee_curr y Vee_y_pre]);
+            x_path = spline(t_path,[dxee_curr x Vee_x_pre]);
+            th_path = spline(t_path,[dthee_curr th dth_ee_nxt]);
+%             plot(x,y,'o',xx,ppval(cs,xx),'-');
+%             der = fnder(cs,1);
+%             ppval(der,8)
+            t_des = linspace(this.t,this.t+t_flight+.5,115);
+            y = ppval(y_path,t_des);
+            x = ppval(x_path,t_des);
+            th = ppval(th_path,t_des);
+            Qdes = [];
+            
+            
+            for i = 1:length(x)
+                if i == 1
+                    Qdes(:,i) = n_link_invKin(this,x(i),y(i),th(i),[1;1;.5],q);
+                else
+                    Qdes(:,i) = n_link_invKin(this,x(i),y(i),th(i),[1;1;.5],Qdes(:,i-1));
+                end
+            end
+            this.Q_des = Qdes;
+        end
+
+%         function [Q] = n_link_invKin(this,x_ee,y_ee,th_ee,L,q_cur)
+%             ee = [x_ee; y_ee; th_ee];
+%             
+%             q_old = q_cur;
+%             q_new = zeros(2*this.n+4,1);
+%             err = sum((ee-impact_fwdKin(this,q_old,L)).^2);
+%             % search for joint angles that minimizes the error between the fwdKin and 
+%             % the desired ee coordinates
+%             while err > 1e-8
+%             % for j = 1:100 %iterate for 100 times
+%                 for i = 1:this.n
+%                     if i == this.n
+%                        fun = @(q_tmp)sum((ee-impact_fwdKin(this,[q_tmp; q_old(2:end,1)],L)).^2);
+%                        q = fminbnd(fun,q_old(1,1)-pi,q_old(1,1)+pi);
+%                        q_new(1,1) = q;
+%                     else
+%                        fun = @(q_tmp)sum((ee-impact_fwdKin(this,[q_old(1:this.n-i,1);q_tmp;q_old(this.n-i+2:end,1)],L)).^2);
+%                        q = fminbnd(fun,q_old(this.n-i+1,1)-pi,q_old(this.n-i+1,1)+pi);
+%                        q_new(this.n-i+1,1) = q;
+%                     end
+%                     q_old = q_new;
+%                     err = sum((ee-impact_fwdKin(this,q_old,L)).^2);
+%                 end
+%             end
+%             if err == 0
+%                 q_new = q_old;
+%             end
+%             Q = q_new;
+%         end
+        function [Q] = n_link_invKin(this,x_ee,y_ee,th_ee,L,q_cur)
+            Qnew = q_cur;
+            x2 = x_ee-sin(th_ee)*L(end,1);
+            y2 = y_ee-cos(th_ee)*L(end,1);
+            
+            
+            try
+                a = atan2(y2,x2);
+            catch
+                f = 1;
+            end
+            c = sqrt(x2^2+y2^2);
+            
+            if c >= L(1,1)+L(2,1)
+                sprintf('All is lost and my day is ruined...')
+                Q = q_cur;
+                return
+            end
+            alpha = acos((L(1,1)^2+L(2,1)^2-c^2)/(2*L(1,1)*L(2,1)));
+            beta = acos((L(1,1)^2-L(2,1)^2+c^2)/(2*L(1,1)*c));
+            
+            q1a = pi/2 - (a+beta);
+            q2a = pi/2 - ((a+beta)-(pi-alpha));
+            
+            q1b = pi/2 - (a-beta);
+            q2b = pi/2 - ((a-beta)+(pi-alpha));
+
+
+%             ya = cos(q1a) + cos(q2a)
+%             yb = cos(q1b) + cos(q2b)
+% 
+%             xa = sin(q1a) + sin(q2a) 
+%             xb = sin(q1b) + sin(q2b)
+
+
+            
+            if abs(q1a-q_cur(1,1)) <= abs(q1b-q_cur(1,1))
+                Qnew(1,1) = q1a;
+                Qnew(2,1) = q2a;
+            elseif abs(q1a-q_cur(1,1)) > abs(q1b-q_cur(1,1))
+                Qnew(1,1) = q1b;
+                Qnew(2,1) = q2b;
+            end
+            Qnew(3,1) = th_ee;
+            Q = Qnew;
+        end
+
+
+        function [ee] = impact_fwdKin(this,Q,L)
+            %where Q are the states and L is the vector of arm lengths
+%             Q = this.X;
+            q = Q(1:this.n,1);
+            x_ee  = L'*sin(q);
+            y_ee = L'*cos(q);
+            th_ee = q(end);
+            ee = [x_ee; y_ee; th_ee];
         end
 
     end

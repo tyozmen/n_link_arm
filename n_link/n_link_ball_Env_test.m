@@ -817,9 +817,7 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
             th_ee = q(end);
             ee = [x_ee; y_ee; th_ee];
         end
-
-
-
+        
     end
     
 
