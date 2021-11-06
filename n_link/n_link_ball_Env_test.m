@@ -1,4 +1,4 @@
-classdef n_link_ball_Env < rl.env.MATLABEnvironment
+classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
     %fast environment for the n-link arm. Uses anonymous functions for M,C,Tg instead of symbolics    
     
     %% Properties 
@@ -16,12 +16,12 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         d = 0.05;   % half thickness of the link
         e = .8;     % coeff of restitution
         m_b = .15;
-%         m_b = 2;
+
         dt_min = 1e-6;
         
         dt = .01; 
 
-        N = 2500; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        N = 1000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         lim = 35; % bound for torques
         ptch=[]
         init_qvals = [];
@@ -39,17 +39,15 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         animate = false;
         
         %q_des = [-pi/3; pi/3; pi/2];
-        q_init = [-pi/6; 7*pi/12; pi/2]
-        %q_init = [-pi/6; pi/2+pi/6; pi/2];
-
+        q_des = [-pi/6; pi/2+pi/6; pi/2];
         x_init = 1.0;
         x_max = 4.0;
         y_init = 4;
         usePDControl = true; % wether to use the model based control or not
 
+        q_init = [-pi/6; pi/2+pi/6; pi/2];
         q_d_arr = [];
         % Variables needed for apex control
-
         first_hit = 1;
         % path for next desired impact
         x_path = [];
@@ -75,7 +73,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
     methods              
         % Contructor method creates an instance of the environment
         % Change class name and constructor name accordingly
-        function this = n_link_ball_Env(M,C,Tg,B,L,usePDControl)
+        function this = n_link_ball_Env_test(M,C,Tg,B,L,usePDControl)
             n = length(B); %number of links
            
             % Initialize Observation settings
@@ -192,35 +190,28 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             
             % need to detect collision
             Q = [q;q_b;dq;dq_b];
-
+%             if any(isnan(Q)) || ~all(isreal(Q))
+%                 true
+%             end
             [contact, upper ,lower, cornerHit] = contact_detect(this,Q);
-            th1 = atan(cos(Q(this.n))/sin(Q(this.n)));
-            th2 = atan(cos(this.X(this.n))/sin(this.X(this.n)));
+            
+            
+            if cornerHit   % If the ball is going to hit the corner of the arm the episode is done
+                IsDone = 1;
+            elseif contact
+                dt_temp = find_dt2contact(this,upper,lower,Q);
 
-            if contact
-                
-                if (abs(th1) > pi/4 || abs(th2) > pi/4)
+                if dt_temp == -1
                     isDone = 1;
-                elseif cornerHit   % If the ball is going to hit the corner of the arm the episode is done
-                    isDone = 1;
-                else 
-                   dt_temp = find_dt2contact(this,upper,lower,Q);
-                    if dt_temp == -1
-                        isDone = 1;
-                    end
-                end
-            end
-            if contact && ~isDone
+                else
                     if this.usePDControl
                         Action = u;
                     else
                         u = Action;
                     end
-
                     d2q = double(-M_tmp\C_tmp*dq-M_tmp\Tg_tmp*this.g+M_tmp\this.B*Action);
                     dq = [this.X(this.n+3:end); d2q; 0; -this.g];
                     q = this.X + dq*dt_temp;    % pre-impact states 
-                    
                     this.t = this.t + dt_temp;
                     
                     [Q,d_xy_ee] = impact(this,q);         % post-impact states an xy velocities
@@ -234,10 +225,14 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
                         this.dy_path = fnder(this.y_path,1);
                         this.dth_path = fnder(this.th_path,1);
                     end
-                  
-           else
-             this.t = this.t + this.dt;
-           end
+                end
+                    
+             else
+                this.t = this.t + this.dt;
+             end
+        
+            
+            
             
             this.X = Q;
             Observation = this.X;
@@ -246,29 +241,30 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             this.actions_arr = [this.actions_arr Action];
             this.t_arr = [this.t_arr this.t];
             
-            ypen = -1e-1*((this.h_d_apx + this.y_imp)-this.h_apx).^2;
-            xpen = -1e-2*((this.x_init)-this.X(this.n+1)).^2;
-            alive = 1;
-            Reward = alive + xpen + ypen;
-
-            ball_x = this.X(this.n+1);
-            if abs(ball_x) > this.x_max
-                isDone = 1;
-            end
+            
+            Reward = 200/1000 - 1e-2.*((this.h_d_apx + this.y_imp)-this.X(this.n+2)).^2;
            
-            IsDone = isDone || this.curStep >= this.N; %|| term;
+            IsDone = this.curStep >= this.N; %|| term;
             this.curStep = this.curStep + 1;
-       
+            
+            %%% Rewards for the following need to be adjusted
+            if cornerHit   % If the ball is going to hit the corner of the arm the episode is done
+                IsDone = 1;
+            end
             if this.X(this.n+2)-this.r <= 0 % ball is on the floor
                 IsDone = 1;
+               % this.X(end) = 0;
+                Reward = Reward;
+                %%%%%%%%%%%%%%%% NEED TO FIGURE OUT REWARD SITUATION FOR
+                %%%%%%%%%%%%%%%% DROPPING THE BALL
             end
             
         end
         
         % Reset environment to initial state and output initial observation
         function InitialObservation = reset(this)
-            this.X(1:this.n,1) = this.q_init; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% need to change this to random around initial condition
-            this.X(this.n+1:this.n+2,1) = [this.x_init; this.y_init];
+            this.X(1:this.n,1) = this.q_des; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% need to change this to random around initial condition
+            this.X(this.n+1:this.n+2,1) = [1; 3];
             this.X(this.n+3:end-2,1) = 0;
             this.X(end-1,1) = 0;
             this.X(end,1) = 0;
@@ -282,10 +278,10 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             
             this.t_arr = [this.t_arr 0];
 
-            this.curStep = 0;
+            this.curStep = 0; 
         end
     end
-    %% Optional Methods (set methods' attributes accordingly)
+   
     methods   
         
         
@@ -301,7 +297,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
        
 
         function [xb, yb, xr_u, yr_u, xr_l, yr_l, slope, xshift, yshift, b, th,xn,yn, ee] = closest_point(this, State)
-             % Q is the next states the system will arive so check for
+            % Q is the next states the system will arive so check for
             % contact
             ee = n_link_fwdKin(this,State(1:this.n));
             xb = State(this.n+1);
@@ -314,8 +310,11 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
 
             b = yn - slope*xn;
 
-            th = atan2(cos(State(this.n)),sin(State(this.n))); % angle of the surface wrt x axis
-
+            try
+                th = atan2(cos(State(this.n)),sin(State(this.n))); % angle of the surface wrt x axis
+            catch
+                true
+            end
             yshift = this.d*cos(th);
             xshift = this.d*sin(th);
             % equation for the surface of the arm
@@ -428,7 +427,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             [xr_u, yr_u, xr_l, yr_l, xbR, xnR, xeeR, eqn_upper, eqn_lower, canHappenU, canHappenL] = canHappen(this,Q);
             
             % values from the previous time step
-            [prv_xr_u, prv_yr_u, prv_xr_l, prv_yr_l, prv_xbR, prv_xnR, prv_xeeR, prv_eqn_upper, prv_eqn_lower, prv_canHappenU, prv_canHappenL] = canHappen(this,this.X);        
+            [prv_xr_u, prv_yr_u, prv_xr_l, prv_yr_l, prv_xbR, prv_xnR, prv_xeeR, prv_eqn_upper, prv_eqn_lower, prv_canHappenU, prv_canHappenL] = canHappen(this,this.X);
             
             % if eqn went below zero and contact could have happened then integration went too far we need to take a step back    
             if (eqn_upper(xr_u,yr_u) < 0 && eqn_lower(xr_u,yr_u) > 0 && canHappenU) ...
@@ -477,7 +476,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             
             q_nxt = @(dt)q + dq*dt;            % next joint angles
             xb_nxt = @(dt)q_b(1) + dq_b(1)*dt; % next x_b
-            yb_nxt = @(dt)q_b(2) + dq_b(2)*dt; % next y_b
+            yb_nxt = @(dt)q_b(2) + dq_b(2)*dt; % next y_b            
             
             x_ee = @(dt)this.L'*sin(q_nxt(dt)); % next x_ee (basically forward kinematics)
             y_ee = @(dt)this.L'*cos(q_nxt(dt)); % next y_ee
@@ -514,8 +513,8 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             try
                 dt_temp = fzero(eqn,[0 this.dt]);
             catch
-                %eqn(0)
-                %eqn(this.dt)
+%                 eqn(0)
+%                 eqn(this.dt)
                 dt_temp = -1;
             end
             
@@ -731,7 +730,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             end
             this.Q_des = Qdes;
         end
-
+% 
 %         function [Q] = n_link_invKin(this,x_ee,y_ee,th_ee,L,q_cur)
 %             ee = [x_ee; y_ee; th_ee];
 %             
@@ -818,7 +817,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             th_ee = q(end);
             ee = [x_ee; y_ee; th_ee];
         end
-
+        
     end
     
 

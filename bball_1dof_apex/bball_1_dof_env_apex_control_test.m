@@ -38,7 +38,7 @@ fprintf("FPS: %f \n",  n_episodes/toc(begin));
 [states, actions, t] = get_arrays(env);
 figure()
 plot(t,states(1,:),t,y_des);
-title('link position');
+title('paddle position');
 xlabel('t (s)'); ylabel('y (m)');
 legend('y-actual)', 'y-desired)');
 figure();
