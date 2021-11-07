@@ -9,7 +9,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         m_b = .15;  % mass of ball 
         e = .8;     % coefficient of restitution
         
-        dt = .005; 
+        dt = .01; 
 
         N = 2500; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         lim = 890; % max force. This is about 200lb-force which can be achieved by a $130 linear actuator
@@ -50,7 +50,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         y_des = 0;      % desired y position for the link
         dy_des = 0;     % desired y velocity for the link
 
-    	apx_des = 5;
+    	apx_des = 4;
     end
     
     properties(Access = protected)
@@ -120,7 +120,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
                     this.dt = dt2idle;
                     this.f_idle = 1; % turn idle flag to 1 
                 else
-                    this.dt = 0.005;
+                    this.dt = 0.01;
                 end
             end
             

@@ -1,4 +1,4 @@
-load('ars_1dof_5m.mat')
+load('ars_1dof_h4.mat')
 %load('ars_works_7m.mat')
 
 env = agent.env;

@@ -19,7 +19,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
 %         m_b = 2;
         dt_min = 1e-6;
         
-        dt = .001; 
+        dt = .01; 
 
         N = 1000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         lim = 35; % bound for torques
@@ -45,6 +45,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         y_init = 4;
         usePDControl = true; % wether to use the model based control or not
 
+%         q_init = [-pi/6; 7*pi/12; pi/2];
         q_init = [-pi/6; pi/2+pi/6; pi/2];
         q_d_arr = [];
         % Variables needed for apex control
