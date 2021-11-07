@@ -12,7 +12,7 @@ from scipy.io import savemat
 import pickle
 
 env_script = "make_1dof_env"
-exp_path = f"/home/sgillen/work/n_link_arm/stable/sb3_data/{env_script}"
+exp_path = f"/home/sgillen/work/n_link_arm/stable/sb3_data_ppo_apx_h5/{env_script}"
 
 env_partial = partial(MatlabGymMmapWrapper, "/home/sgillen/work/n_link_arm/", env_script)
 

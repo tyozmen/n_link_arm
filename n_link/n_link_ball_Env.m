@@ -21,7 +21,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         
         dt = .001; 
 
-        N = 1000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        N = 2500; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         lim = 35; % bound for torques
         ptch=[]
         init_qvals = [];
@@ -39,15 +39,17 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         animate = false;
         
         %q_des = [-pi/3; pi/3; pi/2];
-        q_des = [-pi/6; 7*pi/12; pi/2]
+        q_init = [-pi/6; 7*pi/12; pi/2]
+        %q_init = [-pi/6; pi/2+pi/6; pi/2];
+
         x_init = 1.0;
         x_max = 4.0;
         y_init = 4;
         usePDControl = true; % wether to use the model based control or not
 
-        q_init = [-pi/6; pi/2+pi/6; pi/2];
         q_d_arr = [];
         % Variables needed for apex control
+
         first_hit = 1;
         % path for next desired impact
         x_path = [];
@@ -245,9 +247,6 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
              this.t = this.t + this.dt;
            end
             
-            
-            
-        
             this.X = Q;
             Observation = this.X;
             
@@ -255,7 +254,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             this.actions_arr = [this.actions_arr Action];
             this.t_arr = [this.t_arr this.t];
             
-            ypen = -1e-2*((this.h_d_apx + this.y_imp)-this.X(this.n+2)).^2;
+            ypen = -1e-1*((this.h_d_apx + this.y_imp)-this.h_apx).^2;
             xpen = -1e-2*((this.x_init)-this.X(this.n+1)).^2;
             alive = 1;
             Reward = alive + xpen + ypen;
