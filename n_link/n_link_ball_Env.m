@@ -39,7 +39,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         animate = false;
         
         %q_des = [-pi/3; pi/3; pi/2];
-        q_des = [-pi/6; 7*pi/12; pi/2]
+%         q_des = [-pi/6; 7*pi/12; pi/2]
         x_init = 1.0;
         x_max = 4.0;
         y_init = 4;
