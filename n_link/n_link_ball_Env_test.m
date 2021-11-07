@@ -19,7 +19,7 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
 
         dt_min = 1e-6;
         
-        dt = .01; 
+        dt = .001; 
 
         N = 1000; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         lim = 35; % bound for torques
@@ -60,7 +60,7 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
         t_des = [];
         x_des = 1; % where we want to keep the ball bouncing
         h_apx = 0;
-        h_d_apx = 2;    % desired apex;
+        h_d_apx = 4;    % desired apex;
         y_imp = .5+.15;      % pre-set impact height
     end
     
@@ -148,8 +148,8 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
     %                 u = max(-this.lim, u);
     %                 u = min(this.lim, u);
                 else
-                    Kp = 100;
-                    Kd = 1.5;
+                    Kp = 55;
+                    Kd = 3.5;
                     u_fl = double(C_tmp*this.X(this.n+3:end-2) + Tg_tmp*this.g);
 
                     x_ee = ppval(this.x_path,this.t);
@@ -159,17 +159,24 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
                     dx_ee = ppval(this.dx_path,this.t);
                     dy_ee = ppval(this.dy_path,this.t);
                     dth_ee = ppval(this.dth_path,this.t);
-
-%                     q_d = n_link_invKin(this,x_ee,y_ee,th_ee,[this.L(1:end-1,1); this.L(end,1)/2],this.X);
-                    q_d = interp1(this.t_des,this.Q_des',this.t);
-                    q_d = q_d';
-                    J = nlink_Jacobian(this,q_d,[this.L(1:end-1,1); this.L(end,1)/2]);
-
-                    q_d = q_d(1:this.n,1);
+                    
+                    q_d = n_link_invKin(this,x_ee,y_ee,th_ee,[this.L(1:end-1,1); this.L(end,1)/2],this.X);
+                    q_d2 = n_link_invKin(this,ppval(this.x_path,this.t),ppval(this.y_path,this.t+this.dt),ppval(this.th_path,this.t+this.dt),[this.L(1:end-1,1); this.L(end,1)/2],this.X);
+                    J = nlink_Jacobian(this,q_d2,[this.L(1:end-1,1); this.L(end,1)/2]);
 %                     dq_d = J\[dx_ee;dy_ee;dth_ee];
-
+                    % interpolation
+%                     q_d = interp1(this.t_des,this.Q_des',this.t);
+%                     q_d = q_d';
+                    q_d = q_d(1:this.n,1);
+                    q_d2 = q_d2(1:this.n,1);
+%                     q_d2 = interp1(this.t_des,this.Q_des',this.t+this.dt);
+                    dq_d = J\[dx_ee;dy_ee;dth_ee];
+                    dq_d2 = J\[ppval(this.dx_path,this.t+this.dt);ppval(this.dy_path,this.t+this.dt);ppval(this.dth_path,this.t+this.dt)];
+                    
                     this.q_d_arr = [this.q_d_arr q_d];
-                    u = u_fl+Kp.*rad2deg(q_d-this.X(1:this.n)) + Kd*rad2deg(0-this.X(this.n+3:end-2));
+%                     u = u_fl+Kp.*rad2deg(q_d2(1,1:this.n)'-this.X(1:this.n)) + Kd*rad2deg(0-this.X(this.n+3:end-2));
+%                     u = u_fl+Kp.*rad2deg(q_d-this.X(1:this.n)) + Kd*rad2deg(0-this.X(this.n+3:end-2));
+                    u = u_fl+Kp.*rad2deg(q_d2-this.X(1:this.n)) + Kd*rad2deg(dq_d2-this.X(this.n+3:end-2));
                     
                 end
                 Action = u;
@@ -649,7 +656,7 @@ classdef n_link_ball_Env_test < rl.env.MATLABEnvironment
             
             
 
-            Vb_y_des = sqrt(this.h_d_apx*2*this.g); % desired y velocity to reach the desired apx height
+            Vb_y_des = sqrt((this.h_d_apx+y_b_nxt)*2*this.g); % desired y velocity to reach the desired apx height
             t_flight_nxt = 2*Vb_y_des/this.g;       % time of fligth for next impact
             Vb_x_des = (this.x_des-x_b_nxt)/t_flight_nxt;
             

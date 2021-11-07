@@ -45,7 +45,7 @@ a1 = annotation('textbox',dim,'String',str,'FitBoxToText','on');
 axis equal; %axis off
 [row,~] = size(X_opt);
 for i=1:row
-    if mod(i,5)==0 || i==2 || i==length(X_opt)
+    if mod(i,25)==0 || i==2 || i==length(X_opt)
         for j = 1:n
             set(p(j), 'Visible', 'off');
             p(j) = patch(xdraw(i,:,j),ydraw(i,:,j),'b','FaceAlpha',.3);

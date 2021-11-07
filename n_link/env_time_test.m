@@ -9,7 +9,7 @@ env = n_link_ball_Env(M_eq,C_eq,Tg_eq,B,L,true);
 h_d_apx = [];
 h_apx = [];
 reset(env);
-n_steps = 3000;
+n_steps = 15000;
 begin = tic;
 for i=1:n_steps
     step(env,zeros(env.n,1));
@@ -24,7 +24,7 @@ fprintf("EPS: %f \n",  n_steps/toc(begin));
 
 [states, actions, t] = get_arrays(env);
 % n_link_ball_animate(env.t_arr,env.states_arr',env.L,env.r,env.d)
-figure(); plot(env.t_arr,env.states_arr(1:3,:)); hold on; plot(env.t_arr(1:end-1),env.q_d_arr);
+figure(); plot(env.t_arr,env.states_arr(1:3,:)); hold on; plot(env.t_arr(1:end-1),env.q_d_arr);legend('1','2','3','d1','d2','d3')
 figure(); plot(env.t_arr,env.states_arr(4:5,:)); 
 figure(); plot(env.t_arr(1:end-1),h_d_apx,env.t_arr(1:end-1),h_apx);
 figure(); plot(env.t_arr(1:end-1),env.actions_arr);legend('1','2','3')

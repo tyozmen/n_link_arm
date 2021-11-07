@@ -1,11 +1,11 @@
 %clear all
-%close all
+close all
 
-env = bball_1_dof_Env_apex_control(false);
+env = bball_1_dof_Env_apex_control(true);
 %plot(env);
 
 reset(env);
-n_episodes = 1000;
+n_episodes = 2000;
 begin = tic;
 y_des = [env.y_des];
 h_apx = [env.h_apx];
@@ -13,7 +13,7 @@ offset = env.y_imp+env.d+env.r;
 h_d_apx = [(env.h_d_apx+offset)];
 R = 0;
 for i=1:n_episodes
-    [s,r,d,~] = env.step(acts(i));
+    [s,r,d,~] = env.step(0);
     y_des = [y_des env.y_des];
     h_apx = [h_apx env.h_apx];
     h_d_apx = [h_d_apx env.h_d_apx+offset];
@@ -53,4 +53,4 @@ figure()
 plot(t,[0 actions]);
 R
 
-bball_1_dof_animate(t,states',env.r,env.d) % uncomment to animate
+% bball_1_dof_animate(t,states',env.r,env.d) % uncomment to animate

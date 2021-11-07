@@ -9,7 +9,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         m_b = .15;  % mass of ball 
         e = .8;     % coefficient of restitution
         
-        dt = .01; 
+        dt = .005; 
 
         N = 2500; % how many steps i n an episode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         lim = 890; % max force. This is about 200lb-force which can be achieved by a $130 linear actuator
@@ -33,10 +33,10 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         t_ni = 0;       % time until next impact
         h_apx = 0;      % apex height;
         h_d_apx = 3-.1;    % desired apex;
-        y_imp = 2-.05;      % pre-set impact height
+        y_imp = 1-.05;      % pre-set impact height
         
-        y_paddle_max = 2 +.2;
-        y_paddle_min = 0;
+        y_paddle_max = 1 +.2;
+        y_paddle_min = -1;
         
             % Where the link trajectory is defined as A*sin(2*pi*fr*t_sin)
         A = 0.35;       % amplitude of the sinusoidal for the link
@@ -47,7 +47,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         t_ai = 0;       % time after impact
         t_idle = 100;   % how long the arm should wait idle before getting ready to hit the ball initially
         f_idle = 0;     % flag for idle state
-        y_des = 2;      % desired y position for the link
+        y_des = 0;      % desired y position for the link
         dy_des = 0;     % desired y velocity for the link
 
     	apx_des = 5;
@@ -120,13 +120,13 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
                     this.dt = dt2idle;
                     this.f_idle = 1; % turn idle flag to 1 
                 else
-                    this.dt = 0.01;
+                    this.dt = 0.005;
                 end
             end
             
             if this.usePDControl
                 % Feedback Lin. + PD control for now to test
-                kp = 55;
+                kp = 305;
                 kd = 111.5;
                 this.y_des = this.y_imp - this.A*sin(2*pi*this.fr*this.t_sin);
                 if this.t_sin == 0
@@ -268,7 +268,7 @@ classdef bball_1_dof_Env_apex_control < rl.env.MATLABEnvironment
         function InitialObservation = reset(this)
 %             this.X(1:this.n,1) = randsample(this.init_qvals,this.n);
 %             this.X(this.n+1:end,1) = 0;
-            this.X = [2-this.d; 7; 0; 0]; % to compare with bball_1_dof_main
+            this.X = [1-this.d; 7; 0; 0]; % to compare with bball_1_dof_main
             this.states_arr = [];
             this.actions_arr = [];
             this.t_arr = [];
