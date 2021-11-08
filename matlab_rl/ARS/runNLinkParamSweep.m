@@ -2,12 +2,13 @@ n = 3;
 [M,C,Tg,B] = manipEqns(n);
 [M_eq,C_eq,Tg_eq] = sym2anonFnc(M,C,Tg);
 env = n_link_ball_Env(M_eq,C_eq,Tg_eq,B, ones(n,1), false);
+env.N = 2500;
 
 nDelta = 32;
 nTop = 2;
-nEpochs = 1000;
-stepSizes = [0.02, 0.2, 0.5];
-deltaStds = [0.005, 0.02, 0.2];
+nEpochs = 2000;
+stepSizes = [0.1, 0.15 0.2,0.25,0.5];
+deltaStds = [0.005, 0.01, 0.015, 0.02];
 
 nStep = size(stepSizes,2);
 nStd = size(deltaStds,2);

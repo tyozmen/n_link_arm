@@ -9,7 +9,7 @@ nTop = 2;
 nEpochs = 2000;
 stepSize = 0.2;
 deltaStd = 0.005;
-nSeeds = 1;
+nSeeds = 8;
 
 R = zeros(nSeeds,1);
 A = cell(nSeeds,1);
@@ -27,7 +27,6 @@ end
 
 figure()
 plot(rewards)
-fprintf("EPS: %f \n",  nEpochs*2*nDelta/toc(begin));
 %% 
 [r,X] = doArsRollout(agent.policy, agent.env, env.N);
 [states, actions, t] = get_arrays(agent.env);
@@ -39,8 +38,8 @@ n_link_ball_animate(env.t_arr,env.states_arr',env.L,env.r,env.d)
 figure()
 plot(X);
 hold on;
-plot(repmat(env.target_state', size(X,1)), '--')
-plot(xhist(1,:), xhist(3,:));
+%plot(repmat(env.target_state', size(X,1)), '--')
+%plot(xhist(1,:), xhist(3,:));
 
 
 figure()

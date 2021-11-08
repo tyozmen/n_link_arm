@@ -61,8 +61,11 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         t_des = [];
         x_des = 1; % where we want to keep the ball bouncing
         h_apx = 0;
-        h_d_apx = 4;    % desired apex;
+        h_d_apx = 4;    % desired apex for model based
         y_imp = .5+.15;      % pre-set impact height
+
+
+	h_d_rl = 4; % 
     end
     
     properties(Access = protected)
@@ -251,12 +254,20 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
         
             this.X = Q;
             Observation = this.X;
+
+            % states after previous impact 
+            dy_b = Q(end);
+            y_b = Q(this.n+2);
+            
+            % Computing states of the ball for all time instants in the current bounce
+            this.h_apx = .5*(dy_b^2)/this.g+y_b; %apex height for this impact
+
             
             this.states_arr = [this.states_arr Observation];
             this.actions_arr = [this.actions_arr Action];
             this.t_arr = [this.t_arr this.t];
             
-            ypen = -1e-2*((this.h_d_apx + this.y_imp)-this.X(this.n+2)).^2;
+            ypen = -1e-2*(this.h_d_rl-this.h_apx).^2;
             xpen = -1e-2*((this.x_init)-this.X(this.n+1)).^2;
             alive = 1;
             Reward = alive + xpen + ypen;
@@ -545,15 +556,15 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             dx_si = dz_imp_i(1);  % x velocity of the surface right before impact
             dy_si = dz_imp_i(2);  % y velocity of the surface right before impact
             
-            dx_bi = q(end-1)  % x velocity of the ball right before impact
-            dy_bi = q(end)    % y velocity of the ball right before impact
+            dx_bi = q(end-1);  % x velocity of the ball right before impact
+            dy_bi = q(end);    % y velocity of the ball right before impact
             
             % need to rotate the coordinate system so our basis vectors are
             % perpendicular and parallel to the surface
             R = [cos(th) sin(th); -sin(th) cos(th)];
             Vr_bi = R*[dx_bi; dy_bi]; 
-            Vr_si = R*[dx_si; dy_si]
-            th
+            Vr_si = R*[dx_si; dy_si];
+            th;
             Vr_bf = zeros(2,1); % post impact ball velocities in the rotated coordinate system
             M_imp = this.M(q(1:this.n)); 
             
@@ -569,7 +580,7 @@ classdef n_link_ball_Env < rl.env.MATLABEnvironment
             % We need to rotate the coordinate system back so we can get Fx_ee and
             % Fy_ee and the final ball velocities
             % rotating back to normal coordinate frame
-            V_bf = R'*Vr_bf 
+            V_bf = R'*Vr_bf;
             F = R'*Fr;
             
             % using the Eqn 13 from "Impact  Configurations  and  Measures
